@@ -1,0 +1,6 @@
+/.venv
+/.gigacode
+/.idea
+/original_example
+/__pycache__
+/.env
