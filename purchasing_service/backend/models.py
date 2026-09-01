@@ -2,17 +2,6 @@ from django.contrib.auth.models import User
 from django.db import models
 
 
-class UserNew(User):
-    class Meta:
-        verbose_name = "Пользователь"
-        verbose_name_plural = "Пользователи"
-        ordering = ["id", "username", "email",
-                    "date_joined", "last_login"]
-
-    def __str__(self):
-        return f"Пользователь {self.username}"
-
-
 class Shop(models.Model):
     name = models.CharField(
         max_length=255,
