@@ -100,6 +100,10 @@ class ProductInfo(models.Model):
         on_delete=models.CASCADE,
         verbose_name="магазин"
     )
+    model = models.CharField(
+        max_length=255,
+        verbose_name="модель"
+    )
     name = models.CharField(
         max_length=255,
         verbose_name="название"
