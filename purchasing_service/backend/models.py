@@ -102,7 +102,8 @@ class ProductInfo(models.Model):
     )
     model = models.CharField(
         max_length=255,
-        verbose_name="модель"
+        verbose_name="модель",
+        default="not_specified",
     )
     name = models.CharField(
         max_length=255,
