@@ -41,7 +41,7 @@ class Category(models.Model):
     )
     shops = models.ManyToManyField(
         Shop,
-        related_name="category",
+        through="ShopCategory",
         verbose_name="магазины"
     )
 
