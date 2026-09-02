@@ -10,6 +10,8 @@ class Shop(models.Model):
     )
     url = models.URLField(
         unique=True,
+        null=True,
+        blank=True,
         verbose_name="url/имя файла"
     )
 
