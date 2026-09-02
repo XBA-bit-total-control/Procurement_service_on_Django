@@ -16,7 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from backend.views import data_import
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/v1/partner/data_import/', data_import),
 ]
