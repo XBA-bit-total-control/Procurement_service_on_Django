@@ -1,5 +1,71 @@
-from django.contrib.auth.models import User
+from django.contrib.auth.models import BaseUserManager, AbstractUser
 from django.db import models
+
+
+class UserManager(BaseUserManager):
+    def create_user(self, email, password, **extra_fields):
+        if not email:
+            raise ValueError("Email is required")
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+
+        return user
+
+    def create_superuser(self, email, password, **extra_fields):
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_staff", True)
+        if not extra_fields.get("is_staff"):
+            raise ValueError("The superuser must be an employee")
+        if not extra_fields.get("is_superuser"):
+            raise ValueError("The superuser must be such")
+
+        return self.create_user(email, password, **extra_fields)
+
+
+class User(AbstractUser):
+    last_name = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        verbose_name="фамилия"
+    )
+    email = models.EmailField(
+        unique=True,
+        verbose_name="email"
+    )
+    patronymic = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        verbose_name="отчество"
+    )
+    registration_token = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        verbose_name="токен регистрации"
+    )
+    is_shop = models.BooleanField(
+        default=False,
+        verbose_name="магазин"
+    )
+    is_confirm = models.BooleanField(
+        default=False,
+        null=True,
+        blank=True,
+        verbose_name="подтвержденный"
+    )
+    username = None
+
+    objects = UserManager()
+
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ["first_name", "last_name"]
+
+    def __str__(self):
+        return f"Пользователь {self.username}"
 
 
 class Shop(models.Model):
