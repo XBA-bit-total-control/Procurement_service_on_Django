@@ -69,6 +69,12 @@ class User(AbstractUser):
 
 
 class Shop(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="shop",
+        verbose_name="пользователь"
+    )
     name = models.CharField(
         max_length=255,
         unique=True,
