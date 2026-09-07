@@ -1,12 +1,19 @@
+import secrets
+
 import requests
 import yaml
 from django.core.validators import URLValidator, ValidationError
 from django.db import IntegrityError, transaction
+from django_rest_passwordreset.serializers import EmailSerializer
 from requests.exceptions import ConnectionError, ConnectTimeout
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .models import Category, ProductInfo, Parameter, ProductParameter, Shop, ShopCategory, Product
+from .data.body_of_letters import completing_registration
+from .email_mailing import send_email
+from .models import (Category, ProductInfo, Parameter, User,
+                     ProductParameter, Shop, ShopCategory, Product)
+from .serializers import UserSerializer
 
 
 @api_view(["POST"])
@@ -261,4 +268,136 @@ def data_import(request) -> Response:
         return Response(
             {"error": f"{err.__class__.__name__} + {err.__str__()}"},
             status=500
+        )
+
+
+@api_view(["POST"])
+def user_register(request) -> Response:
+    data = request.data
+
+    serializer = UserSerializer(data=data)
+    if not serializer.is_valid():
+        return Response(
+            {"error": serializer.errors},
+            status=400
+        )
+
+    check_existing_user = User.objects.filter(email=serializer.validated_data["email"]).first()
+    if check_existing_user:
+        return Response(
+            {"error": "User with this email already exists"},
+            status=400
+        )
+    serializer.validated_data["registration_token"] = secrets.token_urlsafe(12)
+
+    try:
+        with transaction.atomic():
+            user = User.objects.create_user(**serializer.validated_data)
+            send_email(
+                subject="Registration on the Compraretis ad service",
+                recipient=user.email,
+                content=completing_registration(user.registration_token),
+            )
+    except IntegrityError as err:
+        return Response(
+            {
+                "status": "fail",
+                "error": f"{err.__str__()}"
+            },
+            status=400
+        )
+    except Exception as err:
+        return Response(
+            {
+                "status": "fail",
+                "error": f"{err.__class__.__name__} + {err.__str__()}"
+            },
+            status=500
+        )
+    else:
+        return Response(
+            {
+                "status": "success",
+                "msg": "To complete registration, confirm your email"
+            },
+            status=201
+        )
+
+
+@api_view(["POST"])
+def user_register_confirm(request) -> Response:
+    data = request.data
+
+    email = data.get("email")
+    if email is None:
+        return Response(
+            {"error": "You need to specify an email address"},
+            status=400
+        )
+    check_email = EmailSerializer(data={"email": email})
+    if not check_email.is_valid():
+        return Response(
+            {"error": "Invalid email address"},
+            status=400
+        )
+
+    token = data.get("token")
+    if token is None:
+        return Response(
+            {"error": "To confirm registration, you must provide a unique token"},
+            status=400
+        )
+    if not isinstance(token, str):
+        return Response(
+            {"error": "Incorrect token format"},
+            status=400
+        )
+
+    user = User.objects.filter(email=email).first()
+    if user is None:
+        return Response(
+            {"error": f"The user with this email address [ {email} ] was not found. "
+                      f"You should go through the registration procedure again"},
+            status=404
+        )
+    if user.is_confirm:
+        return Response(
+            {"error": "The user has already been verified"},
+            status=400
+        )
+
+    if token != user.registration_token:
+        return Response(
+            {"error": "Invalid token"},
+            status=400
+        )
+
+    user.is_confirm = True
+    user.registration_token = None
+    try:
+        with transaction.atomic():
+            user.save()
+    except IntegrityError as err:
+        return Response(
+            {
+                "status": "fail",
+                "error": f"{err.__str__()}"
+            },
+            status=400
+        )
+    except Exception as err:
+        return Response(
+            {
+                "status": "fail",
+                "error": f"{err.__class__.__name__} + {err.__str__()}"
+            },
+            status=500
+        )
+    else:
+        return Response(
+            {
+                "status": "success",
+                "msg": "The user has been successfully verified"
+            },
+            status=201
         )
