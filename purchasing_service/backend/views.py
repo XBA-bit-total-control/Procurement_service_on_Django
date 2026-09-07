@@ -8,12 +8,13 @@ from django_rest_passwordreset.serializers import EmailSerializer
 from requests.exceptions import ConnectionError, ConnectTimeout
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 
 from .data.body_of_letters import completing_registration
 from .email_mailing import send_email
 from .models import (Category, ProductInfo, Parameter, User,
                      ProductParameter, Shop, ShopCategory, Product)
-from .serializers import UserSerializer
+from .serializers import UserSerializer, ShopSerializer, ProductInfoSerializer
 
 
 @api_view(["POST"])
@@ -408,3 +409,44 @@ def user_register_confirm(request) -> Response:
             },
             status=201
         )
+
+
+@api_view(["GET"])
+def get_list_shops(request) -> Response:
+    shops = Shop.objects.all()
+    paginator = PageNumberPagination()
+    paginator.page_size = 12
+
+    pages = paginator.paginate_queryset(shops, request)
+    serializer = ShopSerializer(pages, many=True)
+
+    return paginator.get_paginated_response(serializer.data)
+
+
+@api_view(["GET"])
+def get_products(request) -> Response:
+    shop_id = request.GET.get("shop_id")
+    category_id = request.GET.get("category_id")
+    if shop_id and category_id:
+        products = ProductInfo.objects.select_related("product__category", "shop").filter(
+            shop_id=shop_id,
+            product__category_id=category_id
+        )
+    elif shop_id:
+        products = ProductInfo.objects.select_related("shop").filter(shop_id=shop_id)
+    elif category_id:
+        products = ProductInfo.objects.select_related("product__category").filter(
+            product__category_id=category_id
+        )
+    else:
+        products = ProductInfo.objects.all()
+    if not products:
+        return Response({"msg": "There is no products satisfying the request parameters"})
+
+    paginator = PageNumberPagination()
+    paginator.page_size = 30
+
+    pages = paginator.paginate_queryset(products, request)
+    serializer = ProductInfoSerializer(pages, many=True)
+
+    return paginator.get_paginated_response(serializer.data)
