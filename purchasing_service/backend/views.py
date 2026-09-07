@@ -108,22 +108,29 @@ def data_import(request) -> Response:
 
                     if id:
                         category_obj = Category.objects.filter(id=id).first()
-                        if category_obj and category_obj.name != name:
-                            return Response(
-                                {"error": f"This id={id} is already in use for the category - select another"},
-                                status=400
+                        if category_obj:
+                            if category_obj.name != name:
+                                return Response(
+                                    {"error": f"This id={id} is already in use for the category - select another"},
+                                    status=400
+                                )
+                        else:
+                            category_obj = Category.objects.create(
+                                id=id,
+                                name=name,
                             )
+                            created = True
                     else:
                         category_obj, created = Category.objects.get_or_create(
                             name=name,
                             defaults={"name": name}
                         )
-                        if created:
-                            ShopCategory.objects.create(
-                                shop=shop_obj,
-                                category=category_obj
-                            )
-                            response_report.data["categories"] += 1  # Внесение отчетности
+                    if created:
+                        ShopCategory.objects.create(
+                            shop=shop_obj,
+                            category=category_obj
+                        )
+                        response_report.data["categories"] += 1  # Внесение отчетности
 
                 # Фиксация внесенных изменений
                 if response_report.data["categories"] > 0:
