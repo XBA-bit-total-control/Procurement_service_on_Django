@@ -240,6 +240,7 @@ class ProductParameter(models.Model):
 
 class Order(models.Model):
     STATUS_CHOICES = {
+        "NOT_CREATED": "не создан",
         "PROCESSING": "в обработке",
         "GETTING_READY": "собирается",
         "ON_THE_WAY": "доставляется",
@@ -260,7 +261,7 @@ class Order(models.Model):
     status = models.CharField(
         max_length=15,
         choices=STATUS_CHOICES,
-        default="PROCESSING"
+        default="NOT_CREATED"
     )
 
     class Meta:
