@@ -9,7 +9,7 @@ from rest_framework.authtoken.serializers import AuthTokenSerializer
 from django.contrib.auth import authenticate
 from django.utils.translation import gettext_lazy as _
 
-from .models import User
+from .models import User, Shop, ProductInfo
 
 
 class UserSerializer(serializers.Serializer):
@@ -114,3 +114,19 @@ class CustomAuthTokenSerializer(AuthTokenSerializer):
 
         attrs['user'] = user
         return attrs
+
+
+class ShopSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Shop
+        fields = ['id', 'name', 'url']
+
+
+class ProductInfoSerializer(serializers.ModelSerializer):
+    shop_id = serializers.IntegerField(source='shop.id')
+    category_id = serializers.IntegerField(source='product.category.id')
+
+    class Meta:
+        model = ProductInfo
+        fields = ["id", "shop_id", "category_id", "model",
+                  "name", "quantity", "price", "price_rrc"]
