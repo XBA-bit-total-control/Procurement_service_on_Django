@@ -1,15 +1,14 @@
 import re
 
+from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.password_validation import validate_password
-from rest_framework import serializers
-from rest_framework.serializers import ValidationError
-from rest_framework.authtoken.serializers import AuthTokenSerializer
-
-from django.contrib.auth import authenticate
 from django.utils.translation import gettext_lazy as _
+from rest_framework import serializers
+from rest_framework.authtoken.serializers import AuthTokenSerializer
+from rest_framework.serializers import ValidationError
 
-from .models import User, Shop, ProductInfo
+from .models import User, Shop, ProductInfo, OrderItem
 
 
 class UserSerializer(serializers.Serializer):
@@ -130,3 +129,22 @@ class ProductInfoSerializer(serializers.ModelSerializer):
         model = ProductInfo
         fields = ["id", "shop_id", "category_id", "model",
                   "name", "quantity", "price", "price_rrc"]
+
+
+class PostProductInfoSerializer(serializers.Serializer):
+    product_info = serializers.IntegerField(min_value=1)
+    quantity = serializers.IntegerField(min_value=1)
+
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name')
+    shop_name = serializers.CharField(source='shop.name')
+
+    class Meta:
+        model = OrderItem
+        fields = ["id", "quantity", "product_name", "shop_name"]
+
+
+class PutOrderItemSerializer(serializers.Serializer):
+    id = serializers.IntegerField(min_value=1)
+    quantity = serializers.IntegerField(min_value=1)
