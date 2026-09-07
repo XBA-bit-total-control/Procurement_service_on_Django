@@ -65,7 +65,7 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ["first_name", "last_name"]
 
     def __str__(self):
-        return f"Пользователь {self.username}"
+        return f"Пользователь {self.first_name}"
 
 
 class Shop(models.Model):
@@ -326,4 +326,4 @@ class Contact(models.Model):
         ordering = ["id", "type", "user", "value"]
 
     def __str__(self):
-        return f"Контакт пользователя {self.user.username}"
+        return f"Контакт пользователя {self.user.first_name}"
