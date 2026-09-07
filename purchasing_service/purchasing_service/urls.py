@@ -15,7 +15,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from backend.authentication import custom_obtain_auth_token
-from backend.views import data_import, user_register, user_register_confirm
+from backend.views import (data_import, user_register, user_register_confirm,
+                           get_list_shops, get_products, BasketAPIView)
 from django.contrib import admin
 from django.urls import path, include
 
@@ -26,5 +27,8 @@ urlpatterns = [
     path('api/v1/user/register', user_register),
     path('api/v1/user/register/confirm', user_register_confirm),
     path('api/v1/user/', include('django_rest_passwordreset.urls')),
-    path('api/v1/user/login', custom_obtain_auth_token)
+    path('api/v1/user/login', custom_obtain_auth_token),
+    path('api/v1/shops', get_list_shops),
+    path('api/v1/products', get_products),
+    path('api/v1/basket', BasketAPIView.as_view()),
 ]
