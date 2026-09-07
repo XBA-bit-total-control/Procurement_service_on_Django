@@ -1,3 +1,4 @@
+import json
 import secrets
 
 import requests
@@ -6,15 +7,19 @@ from django.core.validators import URLValidator, ValidationError
 from django.db import IntegrityError, transaction
 from django_rest_passwordreset.serializers import EmailSerializer
 from requests.exceptions import ConnectionError, ConnectTimeout
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from .data.body_of_letters import completing_registration
 from .email_mailing import send_email
 from .models import (Category, ProductInfo, Parameter, User,
-                     ProductParameter, Shop, ShopCategory, Product)
-from .serializers import UserSerializer, ShopSerializer, ProductInfoSerializer
+                     ProductParameter, Shop, ShopCategory, Product,
+                     Order, OrderItem)
+from .serializers import (UserSerializer, ShopSerializer, ProductInfoSerializer,
+                          PostProductInfoSerializer)
 
 
 @api_view(["POST"])
@@ -453,3 +458,101 @@ def get_products(request) -> Response:
     serializer = ProductInfoSerializer(pages, many=True)
 
     return paginator.get_paginated_response(serializer.data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def add_product_to_cart(request) -> Response:
+    def add_order_item(
+            product_id: int,
+            quantity: int,
+            order_id: int
+    ) -> bool:
+        product_info = ProductInfo.objects.filter(id=product_id).first()
+        if product_info is None:
+            raise IntegrityError(f"Product with id={product_id} not found")
+
+        check_exist_order_item = OrderItem.objects.filter(
+            product_id=product_info.product.id,
+            order_id=order_id,
+            shop_id=product_info.shop.id
+        ).first()
+        if check_exist_order_item:
+            raise IntegrityError("The product is already in your cart")
+
+        OrderItem.objects.create(
+            order=order,
+            product=product_info.product,
+            shop=product_info.shop,
+            quantity=quantity
+        )
+        return True
+
+    try:
+        data = request.data
+        if isinstance(data, list):
+            serializer = PostProductInfoSerializer(data=data, many=True)
+        elif isinstance(data, dict):
+            items = data.get("items")
+            if isinstance(items, str):
+                py_items = json.loads(items)
+                serializer = PostProductInfoSerializer(data=py_items, many=True)
+            else:
+                serializer = PostProductInfoSerializer(data=data)
+        else:
+            return Response(
+                {"error": "Invalid request body"},
+                status=400
+            )
+
+        serializer.is_valid(raise_exception=True)
+        serializer_data = serializer.validated_data
+
+        with transaction.atomic():
+            order, _ = Order.objects.get_or_create(
+                user=request.user,
+                defaults={"user": request.user}
+            )
+            if isinstance(serializer_data, list):
+                for item in serializer_data:
+                    add_order_item(
+                        item["product_info"],
+                        item["quantity"],
+                        order.id
+                    )
+                return Response(
+                    {"status": "success"},
+                    status=201
+                )
+
+            product_id_ = serializer_data["product_info"]
+            quantity_ = serializer_data["quantity"]
+            add_order_item(product_id_, quantity_, order.id)
+            return Response(
+                {"status": "success"},
+                status=201
+            )
+
+    except IntegrityError as err:
+        return Response(
+            {
+                "status": "fail",
+                "error": err.__str__()
+            },
+            status=400
+        )
+    except json.decoder.JSONDecodeError:
+        return Response(
+            {"error": "An incorrect string value was passed "
+                      "for decoding in the json format"},
+            status=400
+        )
+    except Exception as err:
+        return Response(
+            {
+                "status": "fail",
+                "error": f"{err.__class__.__name__} + {err.__str__()}"
+            },
+            status=500
+        )
