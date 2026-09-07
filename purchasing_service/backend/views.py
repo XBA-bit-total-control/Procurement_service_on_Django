@@ -441,7 +441,10 @@ def get_products(request) -> Response:
     else:
         products = ProductInfo.objects.all()
     if not products:
-        return Response({"msg": "There is no products satisfying the request parameters"})
+        return Response(
+            {"msg": "There is no products satisfying the request parameters"},
+            status=404
+        )
 
     paginator = PageNumberPagination()
     paginator.page_size = 30
