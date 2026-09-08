@@ -517,10 +517,13 @@ class BasketAPIView(APIView):
             serializer_data = serializer.validated_data
 
             with transaction.atomic():
-                order, _ = Order.objects.get_or_create(
+                order = Order.objects.filter(
                     user=request.user,
-                    defaults={"user": request.user}
-                )
+                    status="NOT_CREATED"
+                ).first()
+                if order is None:
+                    order = Order.objects.create(user=request.user)
+
                 if isinstance(serializer_data, list):
                     for item in serializer_data:
                         add_order_item(
