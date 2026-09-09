@@ -8,7 +8,7 @@ from rest_framework import serializers
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.serializers import ValidationError
 
-from .models import User, Shop, ProductInfo, OrderItem
+from .models import User, Shop, ProductInfo, OrderItem, Order
 
 
 class UserSerializer(serializers.Serializer):
@@ -318,3 +318,9 @@ class PutContactSerializer(serializers.Serializer):
             check_by_regex(key, value)
 
         return data
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ["id", "status", "created_at"]
