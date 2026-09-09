@@ -137,12 +137,18 @@ class PostProductInfoSerializer(serializers.Serializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source='product.name')
+    product_name = serializers.CharField(source='product_info.name')
     shop_name = serializers.CharField(source='shop.name')
+    common_price = serializers.SerializerMethodField()
+
+    def get_common_price(self, obj):
+        price = obj.product_info.price
+        quantity = obj.quantity
+        return price * quantity
 
     class Meta:
         model = OrderItem
-        fields = ["id", "quantity", "product_name", "shop_name"]
+        fields = ["id", "quantity", "product_name", "shop_name", "common_price"]
 
 
 class PutOrderItemSerializer(serializers.Serializer):

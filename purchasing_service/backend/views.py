@@ -473,20 +473,27 @@ class BasketAPIView(APIView):
             return Response({"msg": "Your cart is empty"})
         serializer = OrderItemSerializer(content, many=True)
 
-        return Response(serializer.data)
+        data = list(serializer.data)
+        cost_of_purchases = 0
+        for content in serializer.data:
+            cost_of_purchases += content["common_price"]
+
+        data.append({"cost_of_purchases": cost_of_purchases})
+
+        return Response(data)
 
     def post(self, request):
         def add_order_item(
-                product_id: int,
+                product_info_id: int,
                 quantity: int,
                 order_id: int
         ) -> bool:
-            product_info = ProductInfo.objects.filter(id=product_id).first()
+            product_info = ProductInfo.objects.filter(id=product_info_id).first()
             if product_info is None:
-                raise IntegrityError(f"Product with id={product_id} not found")
+                raise IntegrityError(f"Product with id={product_info_id} not found")
 
             check_exist_order_item = OrderItem.objects.filter(
-                product_id=product_info.product.id,
+                product_info_id=product_info.product.id,
                 order_id=order_id,
                 shop_id=product_info.shop.id
             ).first()
@@ -495,7 +502,7 @@ class BasketAPIView(APIView):
 
             OrderItem.objects.create(
                 order=order,
-                product=product_info.product,
+                product_info=product_info,
                 shop=product_info.shop,
                 quantity=quantity
             )
@@ -538,9 +545,9 @@ class BasketAPIView(APIView):
                         status=201
                     )
 
-                product_id_ = serializer_data["product_info"]
+                product_info_id_ = serializer_data["product_info"]
                 quantity_ = serializer_data["quantity"]
-                add_order_item(product_id_, quantity_, order.id)
+                add_order_item(product_info_id_, quantity_, order.id)
                 return Response(
                     {"status": "success"},
                     status=201

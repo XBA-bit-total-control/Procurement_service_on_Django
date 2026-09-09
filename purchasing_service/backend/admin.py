@@ -55,8 +55,8 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
-    list_display = ["id", "product", "shop", "quantity"]
-    list_filter = ["id", "product", "shop", "quantity"]
+    list_display = ["id", "product_info", "shop", "quantity"]
+    list_filter = ["id", "product_info", "shop", "quantity"]
 
 
 @admin.register(Contact)
