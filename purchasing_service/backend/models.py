@@ -279,10 +279,10 @@ class OrderItem(models.Model):
         on_delete=models.CASCADE,
         verbose_name="заказ"
     )
-    product = models.ForeignKey(
-        Product,
+    product_info = models.ForeignKey(
+        ProductInfo,
         on_delete=models.CASCADE,
-        verbose_name="товар"
+        verbose_name="информация о товаре"
     )
     shop = models.ForeignKey(
         Shop,
@@ -296,7 +296,7 @@ class OrderItem(models.Model):
     class Meta:
         verbose_name = "Товар в заказе"
         verbose_name_plural = "Товары в заказе"
-        ordering = ["id", "product", "shop", "quantity"]
+        ordering = ["id", "product_info", "shop", "quantity"]
 
     def __str__(self):
         return f"Товар для заказа №{self.order.id}"
