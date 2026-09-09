@@ -468,7 +468,20 @@ class BasketAPIView(APIView):
     authentication_classes = [TokenAuthentication]
 
     def get(self, request):
-        content = OrderItem.objects.select_related("order").filter(order__user_id=request.user.id)
+        order = Order.objects.filter(
+            user=request.user,
+            status="NOT_CREATED"
+        ).first()
+        if order is None:
+            return Response(
+                {"error": "Your cart has not yet been created"},
+                status=404
+            )
+
+        content = OrderItem.objects.select_related("order").filter(
+            order__user_id=request.user.id,
+            order=order
+        )
         if not content:
             return Response({"msg": "Your cart is empty"})
         serializer = OrderItemSerializer(content, many=True)
