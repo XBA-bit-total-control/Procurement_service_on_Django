@@ -148,3 +148,167 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class PutOrderItemSerializer(serializers.Serializer):
     id = serializers.IntegerField(min_value=1)
     quantity = serializers.IntegerField(min_value=1)
+
+
+class ContactSerializer(serializers.Serializer):
+    telephone = serializers.CharField(
+        min_length=11,
+        max_length=70,
+    )
+    settlement = serializers.CharField(
+        min_length=3,
+        max_length=40,
+    )
+    street = serializers.CharField(
+        min_length=3,
+        max_length=70,
+    )
+    house = serializers.CharField(
+        min_length=1,
+        max_length=10,
+    )
+    structure = serializers.CharField(
+        min_length=1,
+        max_length=10,
+        allow_null=True,
+        required=False
+    )
+    building = serializers.CharField(
+        min_length=1,
+        max_length=10,
+        allow_null=True,
+        required=False
+    )
+    flat = serializers.CharField(
+        min_length=1,
+        max_length=10,
+        allow_null=True,
+        required=False
+    )
+    comment = serializers.CharField(
+        min_length=10,
+        max_length=90,
+        allow_null=True,
+        required=False
+    )
+
+    def validate_telephone(self, value):
+        pattern = r"(\+7|8)\s?[- (]?(\d{3})[- )]?\s?[- ]?(\d{3})[- ]?(\d{2})[- ]?(\d{2})\D*(\d{2,5})?"
+        check = re.findall(pattern, value)
+        error_msg = ("Incorrect telephone value. Please adhere to the format"
+                     " +7 999 999 99 99 доб. (2 to 5 digits). The extension is not required.")
+
+        if len(check) == 0:
+            raise ValidationError(error_msg)
+        parts = check[0]
+        if not parts[5]:
+            value = f"+7({parts[1]}){parts[2]}-{parts[3]}-{parts[4]}"
+        if parts[5]:
+            if "доб" in value:
+                value = f"+7({parts[1]}){parts[2]}-{parts[3]}-{parts[4]} доб. {parts[5]}"
+            else:
+                raise ValidationError(error_msg)
+        return value
+
+    def validate(self, data):
+        def check_by_regex(key: str, value: str) -> None:
+            check = re.findall(r"[0-9а-яА-Яa-zA-Z\s]", value)
+            if len(check) != len(value):
+                raise ValidationError(f"The field {key} contains invalid characters")
+
+        need_list = ["settlement", "street", "house",
+                     "structure", "building", "flat"]
+
+        need_data = {key: value for key, value in data.items() if key in need_list}
+
+        for key, value in need_data.items():
+            check_by_regex(key, value)
+
+        return data
+
+
+class PutContactSerializer(serializers.Serializer):
+    id = serializers.IntegerField(
+        min_value=1,
+        required=True
+    )
+    telephone = serializers.CharField(
+        min_length=11,
+        max_length=70,
+        required=False
+    )
+    settlement = serializers.CharField(
+        min_length=3,
+        max_length=40,
+        required=False
+    )
+    street = serializers.CharField(
+        min_length=3,
+        max_length=70,
+        required=False
+    )
+    house = serializers.CharField(
+        min_length=1,
+        max_length=10,
+        required=False
+    )
+    structure = serializers.CharField(
+        min_length=1,
+        max_length=10,
+        allow_null=True,
+        required=False
+    )
+    building = serializers.CharField(
+        min_length=1,
+        max_length=10,
+        allow_null=True,
+        required=False
+    )
+    flat = serializers.CharField(
+        min_length=1,
+        max_length=10,
+        allow_null=True,
+        required=False
+    )
+    comment = serializers.CharField(
+        min_length=10,
+        max_length=90,
+        allow_null=True,
+        required=False
+    )
+
+    def validate_telephone(self, value):
+        pattern = r"(\+7|8)\s?[- (]?(\d{3})[- )]?\s?[- ]?(\d{3})[- ]?(\d{2})[- ]?(\d{2})\D*(\d{2,5})?"
+        check = re.findall(pattern, value)
+        error_msg = ("Incorrect telephone value. Please adhere to the format"
+                     " +7 999 999 99 99 доб. (2 to 5 digits). The extension is not required.")
+
+        if len(check) == 0:
+            raise ValidationError(error_msg)
+        parts = check[0]
+        if not parts[5]:
+            value = f"+7({parts[1]}){parts[2]}-{parts[3]}-{parts[4]}"
+        if parts[5]:
+            if "доб" in value:
+                value = f"+7({parts[1]}){parts[2]}-{parts[3]}-{parts[4]} доб. {parts[5]}"
+            else:
+                raise ValidationError(error_msg)
+        return value
+
+    def validate(self, data):
+        def check_by_regex(key: str, value: str) -> None:
+            check = re.findall(r"[0-9а-яА-Яa-zA-Z\s]", value)
+            if len(check) != len(value):
+                raise ValidationError(f"The field {key} contains invalid characters")
+
+        need_list_not_null = ["settlement", "building", "house"]
+        need_list_null = ["flat", "structure", "street"]
+
+        need_data = {key: value for key, value in data.items() if key in need_list_not_null + need_list_null}
+
+        for key, value in need_data.items():
+            if key in need_list_null and value is None:
+                continue
+            check_by_regex(key, value)
+
+        return data
