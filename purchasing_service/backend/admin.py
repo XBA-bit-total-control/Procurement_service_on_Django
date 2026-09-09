@@ -61,5 +61,7 @@ class OrderItemAdmin(admin.ModelAdmin):
 
 @admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):
-    list_display = ["id", "type", "user", "value"]
-    list_filter = ["id", "type", "user", "value"]
+    list_display = ["id", "user", "telephone", "settlement", "street",
+                    "house", "structure", "building", "flat", "comment"]
+    list_filter = ["id", "user", "telephone", "settlement", "street",
+                   "house", "structure", "building", "flat"]
