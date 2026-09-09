@@ -303,28 +303,56 @@ class OrderItem(models.Model):
 
 
 class Contact(models.Model):
-    TYPE_CHOICES = {
-        "TELEPHONE": "Телефон",
-        "ADDRESS": "Адрес"
-    }
-    type = models.CharField(
-        max_length=20,
-        choices=TYPE_CHOICES,
-        verbose_name="тип"
-    )
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         verbose_name="пользователь"
     )
-    value = models.TextField(
-        verbose_name="значение"
+    telephone = models.CharField(
+        max_length=70,
+        verbose_name="номер телефона"
+    )
+    settlement = models.CharField(
+        max_length=40,
+        verbose_name="поселение"
+    )
+    street = models.CharField(
+        max_length=70,
+        verbose_name="улица"
+    )
+    house = models.CharField(
+        max_length=10,
+        verbose_name="дом"
+    )
+    structure = models.CharField(
+        max_length=10,
+        verbose_name="строение",
+        null=True,
+        blank=True
+    )
+    building = models.CharField(
+        max_length=10,
+        verbose_name="корпус",
+        null=True,
+        blank=True
+    )
+    flat = models.CharField(
+        max_length=10,
+        verbose_name="квартира",
+        null=True,
+        blank=True
+    )
+    comment = models.CharField(
+        max_length=90,
+        verbose_name="комментарий",
+        null=True,
+        blank=True
     )
 
     class Meta:
         verbose_name = "Контакт"
         verbose_name_plural = "Контакты"
-        ordering = ["id", "type", "user", "value"]
+        ordering = ["id"]
 
     def __str__(self):
         return f"Контакт пользователя {self.user.first_name}"
