@@ -5,6 +5,7 @@ import requests
 import yaml
 from django.core.validators import URLValidator, ValidationError
 from django.db import IntegrityError, transaction
+from django.http import HttpResponse
 from django_rest_passwordreset.serializers import EmailSerializer
 from requests.exceptions import ConnectionError, ConnectTimeout
 from rest_framework.authentication import TokenAuthentication
@@ -18,9 +19,10 @@ from .data.body_of_letters import completing_registration
 from .email_mailing import send_email
 from .models import (Category, ProductInfo, Parameter, User,
                      ProductParameter, Shop, ShopCategory, Product,
-                     Order, OrderItem)
+                     Order, OrderItem, Contact)
 from .serializers import (UserSerializer, ShopSerializer, ProductInfoSerializer,
-                          PostProductInfoSerializer, OrderItemSerializer, PutOrderItemSerializer)
+                          PostProductInfoSerializer, OrderItemSerializer, PutOrderItemSerializer,
+                          ContactSerializer, PutContactSerializer)
 
 
 @api_view(["POST"])
@@ -667,6 +669,136 @@ class BasketAPIView(APIView):
                     order_item.delete()
 
                 return Response({"status": "success"})
+
+        except IntegrityError as err:
+            return Response(
+                {
+                    "status": "fail",
+                    "error": err.__str__()
+                },
+                status=400
+            )
+        except ValueError:
+            return Response(
+                {
+                    "status": "fail",
+                    "error": "Invalid value for the id"
+                },
+                status=400
+            )
+        except Exception as err:
+            return Response(
+                {
+                    "status": "fail",
+                    "error": f"{err.__class__.__name__} + {err.__str__()}"
+                },
+                status=500
+            )
+
+
+class ContactAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication]
+
+    def get(self, request) -> Response:
+        contacts = Contact.objects.filter(user=request.user)
+        if not contacts:
+            return Response({"msg": "You haven’t provided your contact information yet."})
+        serializer = OrderItemSerializer(data=contacts)
+
+        return Response(serializer.data)
+
+    def post(self, request) -> Response:
+        serializer = ContactSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        contacts = Contact.objects.filter(user=request.user).all()
+        if len(contacts) == 5:
+            return Response(
+                {"error": "You have already created 5 contacts. "
+                          "Please use them and, if necessary, delete or modify them"},
+                status=400
+            )
+        serializer.validated_data["user_id"] = request.user.id
+        Contact.objects.create(**serializer.validated_data)
+
+        return Response(
+            {"status": "success"},
+            status=201
+        )
+
+    def put(self, request) -> Response:
+        data = request.data
+        if not data:
+            return Response(
+                {"error": "request body is empty"},
+                status=400
+            )
+
+        not_null_fields = ["settlement", "building", "house", "telephone"]
+        for key, value in data.items():
+            if key in not_null_fields and value is None:
+                return Response(
+                    {"error": f"The field {key} cannot be empty"},
+                    status=400
+                )
+
+        serializer = PutContactSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+
+        id_ = serializer.validated_data.pop("id")
+        contacts = Contact.objects.filter(id=id_, user=request.user)
+        if not bool(contacts):
+            return Response(
+            {"error": f"There’s nothing to change. "
+                      f"The contact data belonging to you with id={id_} is missing"},
+            status=404
+        )
+        contacts.update(**serializer.validated_data)
+
+        return Response({"status": "success"})
+
+    def delete(self, request) -> HttpResponse | Response:
+        data = request.data
+        items = data.get("items")
+
+        try:
+            with transaction.atomic():
+                if items is None:
+                    raise IntegrityError("items is required")
+
+                elif isinstance(items, int):
+                    if items > 0:
+                        list_id = [items]
+                    else:
+                        raise IntegrityError("id must be greater than 0")
+
+                elif isinstance(items, str):
+                    if items == "":
+                        raise IntegrityError("The product ids in cart were not transmitted for deletion")
+                    list_id = [int(num) for num in items.split(",")]
+
+                elif isinstance(items, list):
+                    for item in items:
+                        if not isinstance(item, int):
+                            raise IntegrityError(f"Invalid value for the id -> {item}")
+                    list_id = items
+
+                else:
+                    raise IntegrityError("items must be a string or a list")
+
+                for contact_id in list_id:
+                    contact = Contact.objects.filter(
+                        id=contact_id,
+                        user=request.user
+                    ).first()
+
+                    if contact is None:
+                        raise IntegrityError(f"No contact to delete. "
+                      f"The contact data belonging to you with id={contact_id} is missing")
+                    contact.delete()
+
+                return HttpResponse(status=204)
 
         except IntegrityError as err:
             return Response(
