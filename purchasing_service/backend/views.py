@@ -6,6 +6,7 @@ import yaml
 from django.core.validators import URLValidator, ValidationError
 from django.db import IntegrityError, transaction
 from django.http import HttpResponse
+from django.utils import timezone
 from django_rest_passwordreset.serializers import EmailSerializer
 from requests.exceptions import ConnectionError, ConnectTimeout
 from rest_framework.authentication import TokenAuthentication
@@ -15,14 +16,16 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .data.body_of_letters import completing_registration
+from .data.body_of_letters import (completing_registration, order_created_for_user,
+                                   order_created_for_admin)
 from .email_mailing import send_email
 from .models import (Category, ProductInfo, Parameter, User,
                      ProductParameter, Shop, ShopCategory, Product,
                      Order, OrderItem, Contact)
 from .serializers import (UserSerializer, ShopSerializer, ProductInfoSerializer,
                           PostProductInfoSerializer, OrderItemSerializer, PutOrderItemSerializer,
-                          ContactSerializer, PutContactSerializer)
+                          ContactSerializer, PutContactSerializer, OrderSerializer)
+from .services import get_random_activ_admin, get_random_superuser
 
 
 @api_view(["POST"])
@@ -842,5 +845,119 @@ class ContactAPIView(APIView):
                     "status": "fail",
                     "error": f"{err.__class__.__name__} + {err.__str__()}"
                 },
+                status=500
+            )
+
+
+class OrderAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication]
+
+    def get(self, request):
+        orders = Order.objects.filter(user=request.user).exclude(status="NOT_CREATED").all()
+        serializer = OrderSerializer(orders, many=True)
+
+        return Response(serializer.data)
+
+    def post(self, request):
+        data = request.data
+        try:
+            with transaction.atomic():
+                contact_id = data.get("contact")
+
+                if contact_id is None:
+                    return Response(
+                        {"error": "contact is required"},
+                        status=400
+                    )
+                elif isinstance(contact_id, int):
+                    pass
+                elif isinstance(contact_id, str):
+                    contact_id = int(contact_id)
+                else:
+                    return Response(
+                        {"error": "Invalid value for the contact"},
+                        status=400
+                    )
+
+                if contact_id < 1:
+                    return Response(
+                        {"error": "contact must be greater than 0"},
+                        status=400
+                    )
+
+                order = Order.objects.filter(
+                    user=request.user,
+                    status="NOT_CREATED"
+                ).first()
+                if order is None:
+                    return Response(
+                        {"error": "Your cart has not yet been created"},
+                        status=404
+                    )
+
+                contact = Contact.objects.filter(user=request.user, id=contact_id).first()
+                if contact is None:
+                    return Response(
+                        {"error": f"The contact data belonging to you with id={contact_id} is missing"},
+                        status=404
+                    )
+
+                cart_contents = OrderItem.objects.select_related("order").filter(
+                    order__user_id=request.user.id,
+                    order__status="NOT_CREATED"
+                )
+                if not cart_contents:
+                    return Response(
+                        {"error": "Your cart is empty — you won’t be able to place an order"},
+                        status=400
+                    )
+                serializer = OrderItemSerializer(cart_contents, many=True)
+
+                order.status = "PROCESSING"
+                order.created_at = timezone.now()
+                order.save()
+
+                price = 0
+                for cart_contents in serializer.data:
+                    price += cart_contents["common_price"]
+
+                content_for_user = order_created_for_user(
+                    order_id=order.id,
+                    order_price=price,
+                    username=request.user.first_name
+                )
+                content_for_admin = order_created_for_admin(
+                    order_id=order.id,
+                    order_price=price,
+                    username=request.user.first_name,
+                    user_id=request.user.id
+                )
+
+                send_email(
+                    subject="Compraretis service: Order confirmation",
+                    recipient=request.user.email,
+                    content=content_for_user
+                )
+                send_email(
+                    subject="Compraretis service: New order",
+                    recipient=get_random_activ_admin().email,
+                    content=content_for_admin
+                )
+
+                return Response(
+                    {"status": "success"},
+                    status=201
+                )
+
+        except ValueError:
+            return Response(
+                {"error": "Invalid value for the contact"},
+                status=400
+            )
+        except Exception:
+            return Response(
+                {"error": f"Internal server error. "
+                          f"If this happens again, please contact the administrator {get_random_superuser().email}"},
                 status=500
             )
