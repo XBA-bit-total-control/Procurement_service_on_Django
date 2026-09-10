@@ -131,6 +131,11 @@ class ShopCategory(models.Model):
         verbose_name="категория"
     )
 
+    class Meta:
+        verbose_name = "Связь Магазин-Категория"
+        verbose_name_plural = "Связи Магазины-Категории"
+        ordering = ["id"]
+
 
 class Product(models.Model):
     name = models.CharField(
