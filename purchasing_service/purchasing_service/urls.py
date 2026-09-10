@@ -16,7 +16,9 @@ Including another URLconf
 """
 from backend.authentication import custom_obtain_auth_token
 from backend.views import (data_import, user_register, user_register_confirm,
-                           get_list_shops, get_products, BasketAPIView)
+                           ShopListView, ProductListView, BasketAPIView,
+                           ContactAPIView, OrderAPIView, UserDetailsListView,
+                           CategoriesListView)
 from django.contrib import admin
 from django.urls import path, include
 
@@ -28,7 +30,11 @@ urlpatterns = [
     path('api/v1/user/register/confirm', user_register_confirm),
     path('api/v1/user/', include('django_rest_passwordreset.urls')),
     path('api/v1/user/login', custom_obtain_auth_token),
-    path('api/v1/shops', get_list_shops),
-    path('api/v1/products', get_products),
+    path('api/v1/user/details', UserDetailsListView.as_view()),
+    path('api/v1/user/contact', ContactAPIView.as_view()),
+    path('api/v1/shops', ShopListView.as_view()),
+    path('api/v1/categories', CategoriesListView.as_view()),
+    path('api/v1/products', ProductListView.as_view()),
     path('api/v1/basket', BasketAPIView.as_view()),
+    path('api/v1/order', OrderAPIView.as_view()),
 ]
