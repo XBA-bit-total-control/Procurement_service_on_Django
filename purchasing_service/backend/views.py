@@ -123,7 +123,7 @@ def data_import(request) -> Response:
                     id = category.get("id")
                     name = category.get("name")
                     if not name:
-                        raise IntegrityError("The required category name was not "
+                        raise AssertionError("The required category name was not "
                                              "specified in the file submitted for data import")
 
                     if id:
@@ -164,72 +164,72 @@ def data_import(request) -> Response:
                 for good in goods:
                     category = good.get("category")
                     if not category:
-                        raise IntegrityError("Product was not assigned a category attribute")
+                        raise AssertionError("Product was not assigned a category attribute")
                     else:
                         if not isinstance(category, int):
-                            raise IntegrityError("The category attribute must be a string")
+                            raise AssertionError("The category attribute must be a string")
 
                     id = good.get("id")
                     if id:
                         if not isinstance(id, int):
-                            raise IntegrityError("The id attribute must be a string")
+                            raise AssertionError("The id attribute must be a string")
                         # Проверка на наличие информации о товаре
                         check_obj_by_id = ProductInfo.objects.filter(id=id).first()
                         if check_obj_by_id:
-                            raise IntegrityError(f"The product info with id={id} already exists")
+                            raise AssertionError(f"The product info with id={id} already exists")
 
                     model = good.get("model")
                     if not model:
-                        raise IntegrityError("Product was not assigned a model attribute")
+                        raise AssertionError("Product was not assigned a model attribute")
                     else:
                         if not isinstance(model, str):
-                            raise IntegrityError("The model attribute must be a string")
+                            raise AssertionError("The model attribute must be a string")
 
                     name = good.get("name")
                     if not name:
-                        raise IntegrityError("Product was not assigned a name attribute")
+                        raise AssertionError("Product was not assigned a name attribute")
                     else:
                         if not isinstance(name, str):
-                            raise IntegrityError("The name attribute must be a string")
+                            raise AssertionError("The name attribute must be a string")
 
                     parameters = good.get("parameters")
                     if parameters:
                         if not isinstance(parameters, dict):
-                            raise IntegrityError("The parameters attribute must be a dictionary")
+                            raise AssertionError("The parameters attribute must be a dictionary")
                         for parameter, value in parameters.items():
                             if not isinstance(parameter, str):
-                                raise IntegrityError("Parameter name/key must be a string")
+                                raise AssertionError("Parameter name/key must be a string")
                             if not isinstance(value, str | int | float | bool):
-                                raise IntegrityError("Parameter value must be a string, number, or boolean")
+                                raise AssertionError("Parameter value must be a string, number, or boolean")
 
                     price = good.get("price")
                     if not price:
-                        raise IntegrityError("Product was not assigned a price attribute")
+                        raise AssertionError("Product was not assigned a price attribute")
                     else:
                         if not isinstance(price, int | float):
-                            raise IntegrityError("The price attribute must be a number")
+                            raise AssertionError("The price attribute must be a number")
                         if price < 0:
-                            raise IntegrityError("The price attribute must be a positive number")
+                            raise AssertionError("The price attribute must be a positive number")
 
                     price_rrc = good.get("price_rrc")
                     if price_rrc:
                         if not isinstance(price_rrc, int | float):
-                            raise IntegrityError("The price_rrc attribute must be a number")
+                            raise AssertionError("The price_rrc attribute must be a number")
                         if price_rrc < 0:
-                            raise IntegrityError("The price_rrc attribute must be a positive number")
+                            raise AssertionError("The price_rrc attribute must be a positive number")
 
                     quantity = good.get("quantity")
                     if not quantity:
-                        raise IntegrityError("Product was not assigned a quantity attribute")
+                        raise AssertionError("Product was not assigned a quantity attribute")
                     else:
                         if not isinstance(quantity, int):
-                            raise IntegrityError("The quantity attribute must be a number")
+                            raise AssertionError("The quantity attribute must be a number")
                         if quantity <= 0:
-                            raise IntegrityError("The quantity attribute must be a positive number")
+                            raise AssertionError("The quantity attribute must be a positive number")
 
                     category_obj = Category.objects.filter(id=category).first()
                     if not category_obj:
-                        raise IntegrityError(f"Category with id={category} does not exist")
+                        raise AssertionError(f"Category with id={category} does not exist")
 
                     product = Product.objects.filter(
                         name=name,
@@ -286,14 +286,24 @@ def data_import(request) -> Response:
 
             return response_report
 
-    except IntegrityError as err:
+    except AssertionError as err:
         return Response(
-            {"error": f"Data import error. {err.__str__()}"},
+            {
+                "status": "fail",
+                "error": err.__str__()
+            },
             status=400
         )
-    except Exception as err:
+    except IntegrityError:
         return Response(
-            {"error": f"{err.__class__.__name__} + {err.__str__()}"},
+            {"error": f"Data import error."
+                      f" The request has been rejected due to a data conflict."},
+            status=400
+        )
+    except Exception:
+        return Response(
+            {"error": f"Internal server error. "
+                      f"If this happens again, please contact the administrator {get_random_superuser().email}"},
             status=500
         )
 
@@ -325,20 +335,18 @@ def user_register(request) -> Response:
                 recipient=user.email,
                 content=completing_registration(user.registration_token),
             )
-    except IntegrityError as err:
+    except IntegrityError:
         return Response(
             {
                 "status": "fail",
-                "error": f"{err.__str__()}"
+                "error": "The request has been rejected due to a data conflict."
             },
             status=400
         )
-    except Exception as err:
+    except Exception:
         return Response(
-            {
-                "status": "fail",
-                "error": f"{err.__class__.__name__} + {err.__str__()}"
-            },
+            {"error": f"Internal server error. "
+                      f"If this happens again, please contact the administrator {get_random_superuser().email}"},
             status=500
         )
     else:
@@ -404,20 +412,18 @@ def user_register_confirm(request) -> Response:
     try:
         with transaction.atomic():
             user.save()
-    except IntegrityError as err:
+    except IntegrityError:
         return Response(
             {
                 "status": "fail",
-                "error": f"{err.__str__()}"
+                "error": "The request has been rejected due to a data conflict."
             },
             status=400
         )
-    except Exception as err:
+    except Exception:
         return Response(
-            {
-                "status": "fail",
-                "error": f"{err.__class__.__name__} + {err.__str__()}"
-            },
+            {"error": f"Internal server error. "
+                      f"If this happens again, please contact the administrator {get_random_superuser().email}"},
             status=500
         )
     else:
@@ -589,7 +595,7 @@ class BasketAPIView(APIView):
         ) -> bool:
             product_info = ProductInfo.objects.filter(id=product_info_id).first()
             if product_info is None:
-                raise IntegrityError(f"Product with id={product_info_id} not found")
+                raise AssertionError(f"Product with id={product_info_id} not found")
 
             check_exist_order_item = OrderItem.objects.filter(
                 product_info_id=product_info.product.id,
@@ -597,7 +603,7 @@ class BasketAPIView(APIView):
                 shop_id=product_info.shop.id
             ).first()
             if check_exist_order_item:
-                raise IntegrityError("The product is already in your cart")
+                raise AssertionError("The product is already in your cart")
 
             OrderItem.objects.create(
                 order=order,
@@ -619,7 +625,7 @@ class BasketAPIView(APIView):
                 else:
                     serializer = PostProductInfoSerializer(data=data)
             else:
-                raise IntegrityError("Invalid request body")
+                raise AssertionError("Invalid request body")
 
             serializer.is_valid(raise_exception=True)
             serializer_data = serializer.validated_data
@@ -652,11 +658,19 @@ class BasketAPIView(APIView):
                     status=201
                 )
 
-        except IntegrityError as err:
+        except AssertionError as err:
             return Response(
                 {
                     "status": "fail",
                     "error": err.__str__()
+                },
+                status=400
+            )
+        except IntegrityError:
+            return Response(
+                {
+                    "status": "fail",
+                    "error": "The request has been rejected due to a data conflict."
                 },
                 status=400
             )
@@ -666,12 +680,10 @@ class BasketAPIView(APIView):
                           "for decoding in the json format"},
                 status=400
             )
-        except Exception as err:
+        except Exception:
             return Response(
-                {
-                    "status": "fail",
-                    "error": f"{err.__class__.__name__} + {err.__str__()}"
-                },
+                {"error": f"Internal server error. "
+                          f"If this happens again, please contact the administrator {get_random_superuser().email}"},
                 status=500
             )
 
@@ -689,7 +701,7 @@ class BasketAPIView(APIView):
             ).first()
 
             if order_item is None:
-                raise IntegrityError(f"Your product with id={id_} is not in the cart")
+                raise AssertionError(f"Your product with id={id_} is not in the cart")
 
             order_item.quantity = quantity
             order_item.save()
@@ -715,13 +727,21 @@ class BasketAPIView(APIView):
                     return Response({"status": "success"})
 
                 else:
-                    raise IntegrityError("Invalid request body")
+                    raise AssertionError("Invalid request body")
 
-        except IntegrityError as err:
+        except AssertionError as err:
             return Response(
                 {
                     "status": "fail",
                     "error": err.__str__()
+                },
+                status=400
+            )
+        except IntegrityError:
+            return Response(
+                {
+                    "status": "fail",
+                    "error": "The request has been rejected due to a data conflict."
                 },
                 status=400
             )
@@ -731,12 +751,10 @@ class BasketAPIView(APIView):
                           "for decoding in the json format"},
                 status=400
             )
-        except Exception as err:
+        except Exception:
             return Response(
-                {
-                    "status": "fail",
-                    "error": f"{err.__class__.__name__} + {err.__str__()}"
-                },
+                {"error": f"Internal server error. "
+                          f"If this happens again, please contact the administrator {get_random_superuser().email}"},
                 status=500
             )
 
@@ -748,20 +766,20 @@ class BasketAPIView(APIView):
             with transaction.atomic():
                 if isinstance(items, str):
                     if items == "":
-                        raise IntegrityError("The product ids in cart were not transmitted for deletion")
+                        raise AssertionError("The product ids in cart were not transmitted for deletion")
                     list_id = [int(num) for num in items.split(",")]
 
                 elif isinstance(items, list):
                     for item in items:
                         if not isinstance(item, int):
-                            raise IntegrityError(f"Invalid value for the id -> {item}")
+                            raise AssertionError(f"Invalid value for the id -> {item}")
                     list_id = items
 
                 elif items is None:
-                    raise IntegrityError("items is required")
+                    raise AssertionError("items is required")
 
                 else:
-                    raise IntegrityError("items must be a string or a list")
+                    raise AssertionError("items must be a string or a list")
 
                 for order_item_id in list_id:
                     order_item = OrderItem.objects.filter(
@@ -770,17 +788,25 @@ class BasketAPIView(APIView):
                     ).first()
 
                     if order_item is None:
-                        raise IntegrityError(f"The product with id={order_item_id}"
+                        raise AssertionError(f"The product with id={order_item_id}"
                                              f" is not in the list for deletion")
                     order_item.delete()
 
                 return Response({"status": "success"})
 
-        except IntegrityError as err:
+        except AssertionError as err:
             return Response(
                 {
                     "status": "fail",
                     "error": err.__str__()
+                },
+                status=400
+            )
+        except IntegrityError:
+            return Response(
+                {
+                    "status": "fail",
+                    "error": "The request has been rejected due to a data conflict."
                 },
                 status=400
             )
@@ -792,12 +818,10 @@ class BasketAPIView(APIView):
                 },
                 status=400
             )
-        except Exception as err:
+        except Exception:
             return Response(
-                {
-                    "status": "fail",
-                    "error": f"{err.__class__.__name__} + {err.__str__()}"
-                },
+                {"error": f"Internal server error. "
+                          f"If this happens again, please contact the administrator {get_random_superuser().email}"},
                 status=500
             )
 
@@ -871,27 +895,27 @@ class ContactAPIView(APIView):
         try:
             with transaction.atomic():
                 if items is None:
-                    raise IntegrityError("items is required")
+                    raise AssertionError("items is required")
 
                 elif isinstance(items, int):
                     if items > 0:
                         list_id = [items]
                     else:
-                        raise IntegrityError("id must be greater than 0")
+                        raise AssertionError("id must be greater than 0")
 
                 elif isinstance(items, str):
                     if items == "":
-                        raise IntegrityError("The product ids in cart were not transmitted for deletion")
+                        raise AssertionError("The product ids in cart were not transmitted for deletion")
                     list_id = [int(num) for num in items.split(",")]
 
                 elif isinstance(items, list):
                     for item in items:
                         if not isinstance(item, int):
-                            raise IntegrityError(f"Invalid value for the id -> {item}")
+                            raise AssertionError(f"Invalid value for the id -> {item}")
                     list_id = items
 
                 else:
-                    raise IntegrityError("items must be a string or a list")
+                    raise AssertionError("items must be a string or a list")
 
                 for contact_id in list_id:
                     contact = Contact.objects.filter(
@@ -900,17 +924,25 @@ class ContactAPIView(APIView):
                     ).first()
 
                     if contact is None:
-                        raise IntegrityError(f"No contact to delete. "
+                        raise AssertionError(f"No contact to delete. "
                       f"The contact data belonging to you with id={contact_id} is missing")
                     contact.delete()
 
                 return HttpResponse(status=204)
 
-        except IntegrityError as err:
+        except AssertionError as err:
             return Response(
                 {
                     "status": "fail",
                     "error": err.__str__()
+                },
+                status=400
+            )
+        except IntegrityError:
+            return Response(
+                {
+                    "status": "fail",
+                    "error": "The request has been rejected due to a data conflict."
                 },
                 status=400
             )
@@ -922,12 +954,10 @@ class ContactAPIView(APIView):
                 },
                 status=400
             )
-        except Exception as err:
+        except Exception:
             return Response(
-                {
-                    "status": "fail",
-                    "error": f"{err.__class__.__name__} + {err.__str__()}"
-                },
+                {"error": f"Internal server error. "
+                          f"If this happens again, please contact the administrator {get_random_superuser().email}"},
                 status=500
             )
 
