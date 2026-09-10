@@ -1,0 +1,12 @@
+<form>
+    {% for field in filter.form %}
+        <div>
+            {{ field.label_tag }}
+            {{ field }}
+            {% if field.errors %}
+                <span>{{ field.errors }}</span>
+            {% endif %}
+        </div>
+    {% endfor %}
+    <button type="submit">Filter</button>
+</form>
