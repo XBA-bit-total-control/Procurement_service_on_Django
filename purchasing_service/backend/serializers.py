@@ -159,12 +159,13 @@ class ShopSerializer(serializers.ModelSerializer):
 
 
 class ProductInfoSerializer(serializers.ModelSerializer):
+    product_id = serializers.IntegerField(source='product.id')
     shop_id = serializers.IntegerField(source='shop.id')
     category_id = serializers.IntegerField(source='product.category.id')
 
     class Meta:
         model = ProductInfo
-        fields = ["id", "shop_id", "category_id", "model",
+        fields = ["id", "product_id", "shop_id", "category_id", "model",
                   "name", "quantity", "price", "price_rrc"]
 
 
