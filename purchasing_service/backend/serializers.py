@@ -361,3 +361,11 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ["id", "status", "created_at"]
+
+
+class CategorySerializer(serializers.Serializer):
+    id = serializers.IntegerField(min_value=1)
+    name = serializers.CharField(
+        min_length=2,
+        max_length=175,
+    )
