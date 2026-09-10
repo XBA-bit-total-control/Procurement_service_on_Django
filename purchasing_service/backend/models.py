@@ -65,7 +65,7 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ["first_name", "last_name"]
 
     def __str__(self):
-        return f"Пользователь {self.first_name}"
+        return self.first_name
 
 
 class Shop(models.Model):
@@ -93,7 +93,7 @@ class Shop(models.Model):
         ordering = ["id", "name"]
 
     def __str__(self):
-        return f"Магазин {self.name}"
+        return self.name
 
 
 class Category(models.Model):
@@ -114,7 +114,7 @@ class Category(models.Model):
         ordering = ["id", "name"]
 
     def __str__(self):
-        return f"Категория {self.name}"
+        return self.name
 
 
 class ShopCategory(models.Model):
@@ -149,7 +149,7 @@ class Product(models.Model):
         ordering = ["id", "name", "category"]
 
     def __str__(self):
-        return f"Товар {self.name}"
+        return self.name
 
 
 class ProductInfo(models.Model):
@@ -195,7 +195,7 @@ class ProductInfo(models.Model):
                     "price_rrc", "shop", "product"]
 
     def __str__(self):
-        return f"Товар {self.name}"
+        return self.name
 
 
 class Parameter(models.Model):
@@ -210,7 +210,7 @@ class Parameter(models.Model):
         ordering = ["id", "name"]
 
     def __str__(self):
-        return f"Параметр {self.name}"
+        return self.name
 
 
 class ProductParameter(models.Model):
@@ -270,7 +270,7 @@ class Order(models.Model):
         ordering = ["id", "created_at", "status"]
 
     def __str__(self):
-        return f"Заказ №{self.id}"
+        return f"№ {self.id}"
 
 
 class OrderItem(models.Model):
