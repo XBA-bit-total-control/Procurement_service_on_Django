@@ -27,6 +27,14 @@ class CategoryAdmin(admin.ModelAdmin):
     inlines = [ShopCategoryInline, ]
 
 
+@admin.register(ShopCategory)
+class ShopCategoryAdmin(admin.ModelAdmin):
+    list_display = ["id", "shop", "category"]
+    list_filter = ["id", "shop", "category"]
+    search_fields = ["id"]
+    ordering = ["id"]
+
+
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = ["id", "name", "category"]
