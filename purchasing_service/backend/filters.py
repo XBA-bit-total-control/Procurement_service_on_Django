@@ -1,6 +1,6 @@
 import django_filters
 
-from .models import User
+from .models import User, Shop
 
 
 class UserFilter(django_filters.FilterSet):
@@ -28,4 +28,28 @@ class UserFilter(django_filters.FilterSet):
 
     class Meta:
         model = User
+        fields = []
+
+
+class ShopFilter(django_filters.FilterSet):
+    id = django_filters.NumberFilter(field_name='id')
+
+    name = django_filters.CharFilter(field_name='name')
+    name_contains = django_filters.CharFilter(
+        field_name='name',
+        lookup_expr='contains'
+    )
+
+    url = django_filters.CharFilter(field_name='url')
+    url_contains = django_filters.CharFilter(
+        field_name='url',
+        lookup_expr='contains'
+    )
+    no_url = django_filters.BooleanFilter(
+        field_name='url',
+        lookup_expr='isnull',
+    )
+
+    class Meta:
+        model = Shop
         fields = []
