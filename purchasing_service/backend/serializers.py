@@ -42,10 +42,10 @@ class UserSerializer(serializers.Serializer):
         check_numbers = re.findall(r"\d+", value)
         if check_special_characters:
             raise ValidationError(f"The first_name field contains invalid "
-                             f"special characters {check_special_characters}")
+                             f"special characters [ {check_special_characters} ]")
         if check_numbers:
             raise ValidationError(f"The first_name field must not contain numbers. "
-                             f"Exclude {check_numbers}")
+                             f"Exclude [ {check_numbers} ]")
         return value
 
     def validate_last_name(self, value):
@@ -55,10 +55,10 @@ class UserSerializer(serializers.Serializer):
         check_numbers = re.findall(r"\d+", value)
         if check_special_characters:
             raise ValidationError(f"The last_name field contains invalid "
-                             f"special characters [{' '.join(check_special_characters)}]")
+                             f"special characters [ {' '.join(check_special_characters)} ]")
         if check_numbers:
             raise ValidationError(f"The last_name field must not contain numbers. "
-                             f"Exclude [{' '.join(check_numbers)}]")
+                             f"Exclude [ {' '.join(check_numbers)} ]")
         return value
 
     def validate_patronymic(self, value):
@@ -68,10 +68,10 @@ class UserSerializer(serializers.Serializer):
         check_numbers = re.findall(r"\d+", value)
         if check_special_characters:
             raise ValidationError(f"The patronymic field contains invalid "
-                             f"special characters [{' '.join(check_special_characters)}]")
+                             f"special characters [ {' '.join(check_special_characters)} ]")
         if check_numbers:
             raise ValidationError(f"The patronymic field must not contain numbers. "
-                             f"Exclude [{' '.join(check_numbers)}]")
+                             f"Exclude [ {' '.join(check_numbers)} ]")
         return value
 
     def validate_password(self, value):
@@ -85,6 +85,43 @@ class UserSerializer(serializers.Serializer):
     def create(self, validated_data):
         validated_data['password'] = make_password(validated_data['password'])
         return User.objects.create(**validated_data)
+
+
+class GetUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'first_name', 'last_name',
+                  'patronymic', 'is_confirm']
+
+
+class PutUserSerializer(serializers.Serializer):
+    first_name = serializers.CharField(
+        min_length=2,
+        max_length=150,
+        required=False
+    )
+    last_name = serializers.CharField(
+        min_length=2,
+        max_length=150,
+        required=False,
+        allow_null=True
+    )
+    patronymic = serializers.CharField(
+        min_length=2,
+        max_length=255,
+        required=False,
+        allow_null=True
+    )
+    email = serializers.EmailField(required=False)
+
+    def validate_first_name(self, value):
+        UserSerializer.validate_first_name(self, value)
+
+    def validate_last_name(self, value):
+        UserSerializer.validate_last_name(self, value)
+
+    def validate_patronymic(self, value):
+        UserSerializer.validate_patronymic(self, value)
 
 
 class CustomAuthTokenSerializer(AuthTokenSerializer):
