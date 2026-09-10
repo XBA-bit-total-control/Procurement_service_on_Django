@@ -5,8 +5,10 @@ from .models import *
 
 @admin.register(Shop)
 class ShopAdmin(admin.ModelAdmin):
-    list_display = ["id", "name", "url"]
+    list_display = ["id", "name", "url", "user"]
     list_filter = ["id", "name"]
+    search_fields = ["id", "name", "url", "user"]
+    ordering = ["id"]
 
 
 class ShopCategoryInline(admin.TabularInline):
@@ -18,6 +20,8 @@ class ShopCategoryInline(admin.TabularInline):
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ["id", "name"]
     list_filter = ["id", "name"]
+    search_fields = ["id", "name"]
+    ordering = ["id"]
     inlines = [ShopCategoryInline, ]
 
 
@@ -25,38 +29,51 @@ class CategoryAdmin(admin.ModelAdmin):
 class ProductAdmin(admin.ModelAdmin):
     list_display = ["id", "name", "category"]
     list_filter = ["id", "name", "category"]
+    search_fields = ["id", "name"]
+    ordering = ["id"]
 
 
 @admin.register(ProductInfo)
 class ProductInfoAdmin(admin.ModelAdmin):
     list_display = ["id", "product", "shop", "name",
                     "quantity", "price", "price_rrc"]
-    list_filter = ["id", "name", "quantity", "price",
-                   "price_rrc", "shop", "product"]
+    list_filter = ["id", "product", "shop", "name",
+                   "quantity", "price", "price_rrc"]
+    search_fields = ["id", "name", "quantity",
+                     "price", "price_rrc"]
+    ordering = ["id"]
 
 
 @admin.register(Parameter)
 class ParameterAdmin(admin.ModelAdmin):
     list_display = ["id", "name"]
     list_filter = ["id", "name"]
+    search_fields = ["id", "name"]
+    ordering = ["id"]
 
 
 @admin.register(ProductParameter)
 class ProductParameterAdmin(admin.ModelAdmin):
     list_display = ["id", "product_info", "parameter", "value"]
-    list_filter = ["id", "parameter", "value"]
+    list_filter = ["id", "product_info", "parameter", "value"]
+    search_fields = ["id", "value"]
+    ordering = ["id"]
 
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = ["id", "user", "created_at", "status"]
     list_filter = ["id", "user", "created_at", "status"]
+    search_fields = ["id", "created_at", "status"]
+    ordering = ["id"]
 
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
-    list_display = ["id", "product_info", "shop", "quantity"]
-    list_filter = ["id", "product_info", "shop", "quantity"]
+    list_display = ["id", "order", "product_info", "shop", "quantity"]
+    list_filter = ["id", "order", "product_info", "shop", "quantity"]
+    search_fields = ["id", "quantity"]
+    ordering = ["id"]
 
 
 @admin.register(Contact)
@@ -65,3 +82,6 @@ class ContactAdmin(admin.ModelAdmin):
                     "house", "structure", "building", "flat", "comment"]
     list_filter = ["id", "user", "telephone", "settlement", "street",
                    "house", "structure", "building", "flat"]
+    search_fields = ["id", "telephone", "settlement", "street",
+                     "house", "structure", "building", "flat", "comment"]
+    ordering = ["id"]
