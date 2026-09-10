@@ -1,6 +1,6 @@
 import django_filters
 
-from .models import User, Shop
+from .models import User, Shop, Category
 
 
 class UserFilter(django_filters.FilterSet):
@@ -52,4 +52,18 @@ class ShopFilter(django_filters.FilterSet):
 
     class Meta:
         model = Shop
+        fields = []
+
+
+class CategoryFilter(django_filters.FilterSet):
+    id = django_filters.NumberFilter(field_name='id')
+
+    name = django_filters.CharFilter(field_name='name')
+    name_contains = django_filters.CharFilter(
+        field_name='name',
+        lookup_expr='contains'
+    )
+
+    class Meta:
+        model = Category
         fields = []
