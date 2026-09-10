@@ -261,7 +261,8 @@ class Order(models.Model):
     status = models.CharField(
         max_length=15,
         choices=STATUS_CHOICES,
-        default="NOT_CREATED"
+        default="NOT_CREATED",
+        verbose_name="статус"
     )
 
     class Meta:
