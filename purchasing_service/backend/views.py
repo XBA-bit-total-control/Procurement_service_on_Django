@@ -25,7 +25,7 @@ from .data.body_of_letters import (completing_registration, order_created_for_us
                                    order_created_for_admin, change_email_for_old,
                                    change_email_for_now)
 from .email_mailing import send_email
-from .filters import UserFilter
+from .filters import UserFilter, ShopFilter
 from .models import (Category, ProductInfo, Parameter, User,
                      ProductParameter, Shop, ShopCategory, Product,
                      Order, OrderItem, Contact)
@@ -510,16 +510,17 @@ class UserDetailsListView(GenericAPIView, ListModelMixin):
             )
 
 
-@api_view(["GET"])
-def get_list_shops(request) -> Response:
-    shops = Shop.objects.all()
-    paginator = PageNumberPagination()
-    paginator.page_size = 12
+class ShopListView(GenericAPIView, ListModelMixin):
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_class = ShopFilter
+    search_fields = ["name", "url"]
+    queryset = Shop.objects.all()
+    serializer_class = ShopSerializer
+    pagination_class = PageNumberPagination
+    pagination_class.page_size = 12
 
-    pages = paginator.paginate_queryset(shops, request)
-    serializer = ShopSerializer(pages, many=True)
-
-    return paginator.get_paginated_response(serializer.data)
+    def get(self, request):
+        return self.list(request)
 
 
 @api_view(["GET"])
