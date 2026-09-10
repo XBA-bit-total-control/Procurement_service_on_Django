@@ -25,7 +25,7 @@ from .data.body_of_letters import (completing_registration, order_created_for_us
                                    order_created_for_admin, change_email_for_old,
                                    change_email_for_now)
 from .email_mailing import send_email
-from .filters import UserFilter, ShopFilter, CategoryFilter
+from .filters import UserFilter, ShopFilter, CategoryFilter, ProductInfoFilter
 from .models import (Category, ProductInfo, Parameter, User,
                      ProductParameter, Shop, ShopCategory, Product,
                      Order, OrderItem, Contact)
@@ -536,36 +536,17 @@ class CategoriesListView(GenericAPIView, ListModelMixin):
         return self.list(request)
 
 
-@api_view(["GET"])
-def get_products(request) -> Response:
-    shop_id = request.GET.get("shop_id")
-    category_id = request.GET.get("category_id")
-    if shop_id and category_id:
-        products = ProductInfo.objects.select_related("product__category", "shop").filter(
-            shop_id=shop_id,
-            product__category_id=category_id
-        )
-    elif shop_id:
-        products = ProductInfo.objects.select_related("shop").filter(shop_id=shop_id)
-    elif category_id:
-        products = ProductInfo.objects.select_related("product__category").filter(
-            product__category_id=category_id
-        )
-    else:
-        products = ProductInfo.objects.all()
-    if not products:
-        return Response(
-            {"msg": "There is no products satisfying the request parameters"},
-            status=404
-        )
+class ProductListView(GenericAPIView, ListModelMixin):
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_class = ProductInfoFilter
+    search_fields = ["name"]
+    queryset = ProductInfo.objects.all()
+    serializer_class = ProductInfoSerializer
+    pagination_class = PageNumberPagination
+    pagination_class.page_size = 20
 
-    paginator = PageNumberPagination()
-    paginator.page_size = 30
-
-    pages = paginator.paginate_queryset(products, request)
-    serializer = ProductInfoSerializer(pages, many=True)
-
-    return paginator.get_paginated_response(serializer.data)
+    def get(self, request):
+        return self.list(request)
 
 
 class BasketAPIView(APIView):
