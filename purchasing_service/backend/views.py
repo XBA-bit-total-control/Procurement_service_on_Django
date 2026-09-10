@@ -598,7 +598,7 @@ class BasketAPIView(APIView):
                 raise AssertionError(f"Product with id={product_info_id} not found")
 
             check_exist_order_item = OrderItem.objects.filter(
-                product_info_id=product_info.product.id,
+                product_info_id=product_info.id,
                 order_id=order_id,
                 shop_id=product_info.shop.id
             ).first()
