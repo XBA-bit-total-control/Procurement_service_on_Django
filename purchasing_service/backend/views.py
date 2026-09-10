@@ -7,24 +7,32 @@ from django.core.validators import URLValidator, ValidationError
 from django.db import IntegrityError, transaction
 from django.http import HttpResponse
 from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
 from django_rest_passwordreset.serializers import EmailSerializer
 from requests.exceptions import ConnectionError, ConnectTimeout
 from rest_framework.authentication import TokenAuthentication
+from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view
+from rest_framework.filters import SearchFilter
+from rest_framework.generics import GenericAPIView
+from rest_framework.mixins import ListModelMixin
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .data.body_of_letters import (completing_registration, order_created_for_user,
-                                   order_created_for_admin)
+                                   order_created_for_admin, change_email_for_old,
+                                   change_email_for_now)
 from .email_mailing import send_email
+from .filters import UserFilter
 from .models import (Category, ProductInfo, Parameter, User,
                      ProductParameter, Shop, ShopCategory, Product,
                      Order, OrderItem, Contact)
 from .serializers import (UserSerializer, ShopSerializer, ProductInfoSerializer,
                           PostProductInfoSerializer, OrderItemSerializer, PutOrderItemSerializer,
-                          ContactSerializer, PutContactSerializer, OrderSerializer)
+                          ContactSerializer, PutContactSerializer, OrderSerializer,
+                          GetUserSerializer, PutUserSerializer)
 from .services import get_random_activ_admin, get_random_superuser
 
 
@@ -420,6 +428,86 @@ def user_register_confirm(request) -> Response:
             },
             status=201
         )
+
+
+class UserDetailsListView(GenericAPIView, ListModelMixin):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_class = UserFilter
+    serializer_class = GetUserSerializer
+    search_fields = ["first_name", "last_name", "patronymic"]
+    queryset = User.objects.exclude(
+        is_superuser=True).exclude(
+        is_staff=True).exclude(
+        is_shop=True).all()
+
+    def get(self, request):
+        return self.list(request)
+
+    def put(self, request):
+        data = request.data
+        serializer = PutUserSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            with transaction.atomic():
+                user = User.objects.filter(id=request.user.id)
+                email = serializer.validated_data.get("email")
+                if email is not None:
+                    check_exist_email = User.objects.filter(email=email, is_confirm=True).first()
+                    if check_exist_email is not None:
+                        return Response(
+                            {"error": "This email is already registered"},
+                            status=400
+                        )
+                    else:
+                        check_unconfirm_email = User.objects.filter(email=email, is_confirm=False).first()
+                        if check_unconfirm_email is not None:
+                            check_unconfirm_email.delete()
+
+                    tokens_for_delete = Token.objects.filter(user=request.user).all()
+                    if tokens_for_delete:
+                        for token in tokens_for_delete:
+                            token.delete()
+
+                    registration_token = secrets.token_urlsafe(12)
+
+                    serializer.validated_data["is_confirm"] = False
+                    serializer.validated_data["registration_token"] = registration_token
+
+                    send_email(
+                        subject="Compraretis service: change email",
+                        recipient=request.user.email,
+                        content=change_email_for_old(get_random_activ_admin().email),
+                    )
+
+                    user.update(**serializer.validated_data)
+
+                    send_email(
+                        subject="Compraretis service: change email",
+                        recipient=email,
+                        content=change_email_for_now(registration_token),
+                    )
+
+                    return Response(
+                        {
+                            "status": "success",
+                            "msg": "Your email has been changed — please confirm it"
+                        }
+                    )
+                user.update(**serializer.validated_data)
+
+                return Response(
+                    {"status": "success"}
+                )
+
+        except Exception:
+            return Response(
+                {"error": f"Internal server error. "
+                          f"If this happens again, please contact the administrator {get_random_superuser().email}"},
+                status=500
+            )
 
 
 @api_view(["GET"])
