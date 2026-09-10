@@ -25,14 +25,14 @@ from .data.body_of_letters import (completing_registration, order_created_for_us
                                    order_created_for_admin, change_email_for_old,
                                    change_email_for_now)
 from .email_mailing import send_email
-from .filters import UserFilter, ShopFilter
+from .filters import UserFilter, ShopFilter, CategoryFilter
 from .models import (Category, ProductInfo, Parameter, User,
                      ProductParameter, Shop, ShopCategory, Product,
                      Order, OrderItem, Contact)
 from .serializers import (UserSerializer, ShopSerializer, ProductInfoSerializer,
                           PostProductInfoSerializer, OrderItemSerializer, PutOrderItemSerializer,
                           ContactSerializer, PutContactSerializer, OrderSerializer,
-                          GetUserSerializer, PutUserSerializer)
+                          GetUserSerializer, PutUserSerializer, CategorySerializer)
 from .services import get_random_activ_admin, get_random_superuser
 
 
@@ -518,6 +518,19 @@ class ShopListView(GenericAPIView, ListModelMixin):
     serializer_class = ShopSerializer
     pagination_class = PageNumberPagination
     pagination_class.page_size = 12
+
+    def get(self, request):
+        return self.list(request)
+
+
+class CategoriesListView(GenericAPIView, ListModelMixin):
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_class = CategoryFilter
+    search_fields = ["name"]
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    pagination_class = PageNumberPagination
+    pagination_class.page_size = 20
 
     def get(self, request):
         return self.list(request)
