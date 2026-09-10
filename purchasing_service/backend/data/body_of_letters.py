@@ -11,6 +11,25 @@ def completing_registration(token: str) -> str:
     """
 
 
+def change_email_for_now(token: str) -> str:
+    return f"""
+    Your email address on the Compraretis service has been changed, and your profile is now unverified again.
+    To continue using the service, please verify the new email address by accessing the resource api/v1/user/register/confirm
+    Your personal code {token}
+    
+    Sincerely, the Compraretis order service.
+    """
+
+
+def change_email_for_old(admin_email: str) -> str:
+    return f"""
+    The email address in your profile on the Compraretis service has been changed.
+    If you didn’t do this, please contact the administrator at {admin_email}
+    
+    Sincerely, the Compraretis order service.
+    """
+
+
 def order_created_for_user(
         order_id: int,
         order_price: float,
