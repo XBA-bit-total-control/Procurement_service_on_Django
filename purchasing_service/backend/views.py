@@ -39,6 +39,8 @@ from .services import get_random_activ_admin, get_random_superuser
 
 
 @api_view(["POST"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 def data_import(request) -> Response:
     """
     A view for importing data from the url
@@ -46,6 +48,13 @@ def data_import(request) -> Response:
 
     :returns: Response with json content
     """
+    # Проверка является ли пользователь магазином/партнером
+    if not request.user.is_shop:
+        return Response(
+            {"error": "You are not our partner"},
+            status=403
+        )
+
     data = request.data
     url = data.get("url")
     if not url:
