@@ -33,7 +33,8 @@ from .models import (Category, ProductInfo, Parameter, User,
 from .serializers import (UserSerializer, ShopSerializer, ProductInfoSerializer,
                           PostProductInfoSerializer, OrderItemSerializer, PutOrderItemSerializer,
                           ContactSerializer, PutContactSerializer, OrderSerializer,
-                          GetUserSerializer, PutUserSerializer, CategorySerializer)
+                          GetUserSerializer, PutUserSerializer, CategorySerializer,
+                          PartnerOrderItemSerializer)
 from .services import get_random_activ_admin, get_random_superuser
 
 
@@ -1300,3 +1301,28 @@ class PartnerStateAPIView(APIView):
         return Response(
             {"status": "success"}
         )
+
+
+class PartnerOrdersAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication]
+
+    def get(self, request) -> Response:
+        shop = PartnerStateAPIView.get(self, request, internal=True)
+        if isinstance(shop, Response):
+            return shop
+
+        order_items = (OrderItem.objects
+                       .filter(shop=shop)
+                       .exclude(order__status="NOT_CREATED")
+                       .order_by('-order__status')
+                       .all())
+
+        if not bool(order_items):
+            return Response(
+                {"msg": "No orders"}
+            )
+
+        serializer = PartnerOrderItemSerializer(order_items, many=True)
+
+        return Response(serializer.data)
