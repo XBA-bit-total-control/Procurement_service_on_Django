@@ -8,7 +8,7 @@ from rest_framework import serializers
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.serializers import ValidationError
 
-from .models import User, Shop, ProductInfo, OrderItem, Order
+from .models import User, ProductInfo, OrderItem, Order
 
 
 class UserSerializer(serializers.Serializer):
@@ -152,10 +152,19 @@ class CustomAuthTokenSerializer(AuthTokenSerializer):
         return attrs
 
 
-class ShopSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Shop
-        fields = ['id', 'name', 'url']
+class ShopSerializer(serializers.Serializer):
+    id = serializers.IntegerField(
+        min_value=1,
+        required=False
+    )
+    name = serializers.CharField(
+        min_length=3,
+        max_length=255
+    )
+    url = serializers.URLField(
+        allow_null=True,
+        required=False
+    )
 
 
 class ProductInfoSerializer(serializers.ModelSerializer):
