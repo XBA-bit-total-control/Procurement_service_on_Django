@@ -9,10 +9,11 @@ from django.http import HttpResponse
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from django_rest_passwordreset.serializers import EmailSerializer
+from purchasing_service.settings import PARTNERSHIP_AGREEMENT
 from requests.exceptions import ConnectionError, ConnectTimeout
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import GenericAPIView
 from rest_framework.mixins import ListModelMixin
@@ -23,7 +24,7 @@ from rest_framework.views import APIView
 
 from .data.body_of_letters import (completing_registration, order_created_for_user,
                                    order_created_for_admin, change_email_for_old,
-                                   change_email_for_now)
+                                   change_email_for_now, shop_registration)
 from .email_mailing import send_email
 from .filters import UserFilter, ShopFilter, CategoryFilter, ProductInfoFilter
 from .models import (Category, ProductInfo, Parameter, User,
@@ -1074,6 +1075,169 @@ class OrderAPIView(APIView):
                           f"If this happens again, please contact the administrator {get_random_superuser().email}"},
                 status=500
             )
+
+
+@api_view(["POST"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def register_partner(request) -> Response:
+    data = request.data
+
+    if request.user.is_shop:
+        return Response(
+            {"error": "You are already our partner"},
+            status=403
+        )
+    if not request.user.is_active:
+        return Response(
+            {"error": "Inactive users cannot become partners"},
+            status=403
+        )
+    if not request.user.is_confirm:
+        return Response(
+            {"error": "Your profile is not verified. Complete the registration"},
+            status=400
+        )
+
+    try:
+        with transaction.atomic():
+            if isinstance(data, dict):
+                items = data.get("items")
+                if isinstance(items, str):
+                    py_items = json.loads(items)
+                    if len(py_items) > 1:
+                        return Response(
+                            {"error": "There are too many values in the request body"},
+                            status=400
+                        )
+                    serializer = ShopSerializer(data=py_items)
+                else:
+                    serializer = ShopSerializer(data=data)
+            else:
+                raise AssertionError("Invalid request body")
+
+            serializer.is_valid(raise_exception=True)
+            Shop.objects.create(
+                **serializer.validated_data,
+                user=request.user
+            )
+            registration_token = secrets.token_urlsafe(12)
+            request.user.registration_token = registration_token
+            request.user.save()
+
+            body_email = shop_registration(
+                first_name=request.user.first_name,
+                token=registration_token,
+                link_to_agreement=PARTNERSHIP_AGREEMENT
+            )
+
+            send_email(
+                subject="Compraretis service: The beginning of the partnership",
+                recipient=request.user.email,
+                content=body_email
+            )
+
+            return Response(
+                {
+                    "status": "success",
+                    "msg": "To complete the partnership agreement, please check you the email address"
+                },
+                status=201
+            )
+
+    except json.decoder.JSONDecodeError:
+        return Response(
+            {"error": "An incorrect string value was passed "
+                      "for decoding in the json format"},
+            status=400
+        )
+    except IntegrityError:
+        return Response(
+            {
+                "status": "fail",
+                "error": "The request has been rejected due to a data conflict."
+            },
+            status=400
+        )
+    except Exception:
+        return Response(
+            {"error": f"Internal server error. "
+                      f"If this happens again, please contact the administrator {get_random_superuser().email}"},
+            status=500
+        )
+
+
+@api_view(["POST"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def register_partner_confirm(request) -> Response:
+    data = request.data
+
+    if request.user.is_shop:
+        return Response(
+            {"error": "You are already our partner"},
+            status=403
+        )
+    if not request.user.is_active:
+        return Response(
+            {"error": "Inactive users cannot become partners"},
+            status=403
+        )
+    if not request.user.is_confirm:
+        return Response(
+            {"error": "Your profile is not verified. Complete the registration"},
+            status=400
+        )
+
+    token = data.get("token")
+    if token is None:
+        return Response(
+            {"error": "To confirm registration, you must provide a unique token"},
+            status=400
+        )
+    if not isinstance(token, str):
+        return Response(
+            {"error": "Incorrect token format"},
+            status=400
+        )
+    if request.user.registration_token is None:
+        return Response(
+            {"msg": "Complete the first stage of store registration"}
+        )
+    if token != request.user.registration_token:
+        return Response(
+            {"error": "Invalid token"},
+            status=400
+        )
+
+    try:
+        with transaction.atomic():
+            request.user.is_shop = True
+            request.user.registration_token = None
+            request.user.save()
+
+            return Response(
+                {
+                    "status": "success",
+                    "msg": "You have become our partner"
+                },
+                status=201
+            )
+
+    except IntegrityError:
+        return Response(
+            {
+                "status": "fail",
+                "error": "The request has been rejected due to a data conflict."
+            },
+            status=400
+        )
+    except Exception:
+        return Response(
+            {"error": f"Internal server error. "
+                      f"If this happens again, please contact the administrator {get_random_superuser().email}"},
+            status=500
+        )
 
 
 class PartnerStateAPIView(APIView):
