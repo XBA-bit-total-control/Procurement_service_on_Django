@@ -300,6 +300,11 @@ class Order(models.Model):
         default="NOT_CREATED",
         verbose_name="статус"
     )
+    contact = models.ForeignKey(
+        "Contact",
+        on_delete=models.CASCADE,
+        verbose_name="контакты"
+    )
 
     class Meta:
         verbose_name = "Заказ"
