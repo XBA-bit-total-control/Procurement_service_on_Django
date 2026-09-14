@@ -1074,3 +1074,65 @@ class OrderAPIView(APIView):
                           f"If this happens again, please contact the administrator {get_random_superuser().email}"},
                 status=500
             )
+
+
+class PartnerStateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication]
+
+    def get(self, request, internal=False) -> Response | Shop:
+        if not request.user.is_shop:
+            return Response(
+                {"error": "You are not our partner"},
+                status=403
+            )
+        shop = Shop.objects.filter(user=request.user).first()
+        if shop is None:
+            return Response(
+                {"error": "There is no information about the partnership. "
+                          "Please, register the shop"},
+                status=404
+            )
+        if internal:
+            return shop
+        else:
+            return Response(
+                {
+                    "status": "success",
+                    "partner_status": f"{shop.status}"
+                }
+            )
+
+    def patch(self, request) -> Response:
+        data = request.data
+        status = data.get("status")
+        shop = PartnerStateAPIView.get(self, request, internal=True)
+
+        if isinstance(shop, Response):
+            return shop
+
+        if status is None:
+            return Response(
+                {"error": "status is required"},
+                status=400
+            )
+        if not isinstance(status, str):
+            return Response(
+                {"error": "The status value is a string"},
+                status=400
+            )
+        if status == "принимаю":
+            shop.status = "ACCEPT_ORDERS"
+        elif status == "не принимаю":
+            shop.status = "NOT_ACCEPT_ORDERS"
+        else:
+            return Response(
+                {"error": "Incorrect value for the status. "
+                          "Available only ‘принимаю’ and ‘не принимаю’"},
+                status=400
+            )
+        shop.save()
+
+        return Response(
+            {"status": "success"}
+        )
