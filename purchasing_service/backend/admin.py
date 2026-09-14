@@ -2,7 +2,20 @@ from django.contrib import admin
 
 from .models import (Shop, ShopCategory, Category, Product,
                      ProductInfo, Parameter, ProductParameter,
-                     Order, OrderItem, Contact)
+                     Order, OrderItem, Contact, User)
+
+
+@admin.register(User)
+class UserAdmin(admin.ModelAdmin):
+    list_display = ["id", "first_name", "last_name", "patronymic",
+                    "email", "registration_token", "is_active", "is_shop",
+                    "is_confirm", "is_staff", "is_superuser"]
+    list_filter = ["id", "first_name", "last_name", "patronymic",
+                    "email", "is_active", "is_shop",
+                    "is_confirm", "is_staff", "is_superuser"]
+    search_fields = ["id", "first_name", "last_name",
+                     "patronymic", "email"]
+    ordering = ["id"]
 
 
 @admin.register(Shop)
