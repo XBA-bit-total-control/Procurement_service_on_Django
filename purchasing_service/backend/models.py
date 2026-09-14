@@ -275,16 +275,16 @@ class ProductParameter(models.Model):
 
 
 class Order(models.Model):
-    STATUS_CHOICES = {
-        "NOT_CREATED": "не создан",
-        "PROCESSING": "в обработке",
-        "GETTING_READY": "собирается",
-        "ON_THE_WAY": "доставляется",
-        "DELIVERED": "доставлен",
-        "RETURNED": "возвращен",
-        "CANCELED": "отменен",
-        "ERROR": "ошибка"
-    }
+    STATUS_CHOICES = (
+        ("NOT_CREATED", "не создан"),
+        ("PROCESSING", "в обработке"),
+        ("GETTING_READY", "собирается"),
+        ("ON_THE_WAY", "доставляется"),
+        ("DELIVERED", "доставлен"),
+        ("RETURNED", "возвращен"),
+        ("CANCELED", "отменен"),
+        ("ERROR", "ошибка")
+    )
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
