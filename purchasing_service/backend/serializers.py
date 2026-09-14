@@ -379,3 +379,20 @@ class CategorySerializer(serializers.Serializer):
         min_length=2,
         max_length=175,
     )
+
+
+class PartnerOrderItemSerializer(serializers.ModelSerializer):
+    status = serializers.CharField(source='order.status')
+    product_name = serializers.CharField(source='product_info.name')
+    quantity = serializers.IntegerField(min_value=1)
+    order_id = serializers.IntegerField(source='order.id')
+    product_info_id = serializers.IntegerField(source='product_info.id')
+    contacts = ContactSerializer(
+        source='order.contact',
+        read_only=True,
+    )
+
+    class Meta:
+        model = OrderItem
+        fields = ["status", "product_name", "quantity",
+                  "order_id", "product_info_id", "contacts"]
