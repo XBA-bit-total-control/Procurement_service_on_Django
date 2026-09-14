@@ -85,8 +85,8 @@ class ProductParameterAdmin(admin.ModelAdmin):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ["id", "user", "created_at", "status"]
-    list_filter = ["id", "user", "created_at", "status"]
+    list_display = ["id", "user", "created_at", "status", "contact"]
+    list_filter = ["id", "user", "created_at", "status", "contact"]
     search_fields = ["id", "created_at", "status"]
     ordering = ["id"]
 
