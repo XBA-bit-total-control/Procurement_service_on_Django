@@ -90,6 +90,10 @@ class User(AbstractUser):
 
 
 class Shop(models.Model):
+    STATUS_CHOICES = (
+        ("ACCEPT_ORDERS", "принимаю заказы"),
+        ("NOT_ACCEPT_ORDERS", "не принимаю заказы")
+    )
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
@@ -106,6 +110,12 @@ class Shop(models.Model):
         null=True,
         blank=True,
         verbose_name="url/имя файла"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="ACCEPT_ORDERS",
+        verbose_name="статус"
     )
 
     class Meta:
