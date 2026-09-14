@@ -25,6 +25,10 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractUser):
+    first_name = models.CharField(
+        max_length=150,
+        verbose_name="имя"
+    )
     last_name = models.CharField(
         max_length=255,
         null=True,
@@ -57,12 +61,29 @@ class User(AbstractUser):
         blank=True,
         verbose_name="подтвержденный"
     )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="активен"
+    )
+    is_staff = models.BooleanField(
+        default=False,
+        verbose_name="работник"
+    )
+    is_superuser = models.BooleanField(
+        default=False,
+        verbose_name="администратор"
+    )
     username = None
 
     objects = UserManager()
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name"]
+
+    class Meta:
+        verbose_name = "пользователь"
+        verbose_name_plural = "пользователи"
+        ordering = ["id"]
 
     def __str__(self):
         return self.first_name
