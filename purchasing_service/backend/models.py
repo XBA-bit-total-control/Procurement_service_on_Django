@@ -397,4 +397,4 @@ class Contact(models.Model):
         ordering = ["id"]
 
     def __str__(self):
-        return f"Контакт пользователя {self.user.first_name}"
+        return f"№ {self.id}"
