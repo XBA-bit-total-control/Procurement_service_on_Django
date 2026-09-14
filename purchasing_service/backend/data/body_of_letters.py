@@ -52,3 +52,18 @@ def order_created_for_admin(
     The user {username} with id={user_id} wants to place an order with order id={order_id} for the amount {order_price}
     Confirmation is required.
     """
+
+
+def shop_registration(
+        first_name: str,
+        token: str,
+        link_to_agreement: str
+) -> str:
+    return f"""
+    {first_name} we are very glad that You wanted to cooperate with us.
+    Before becoming our partner and starting to sell your products, please read the partnership agreement {link_to_agreement}.
+    If You agree with it, to complete the registration of your store, send the token via the POST api/v1/partner/register/confirm resource.
+    Your personal code is {token}
+    
+    Your service for Compraretis orders.
+    """
