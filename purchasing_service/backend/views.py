@@ -566,6 +566,19 @@ class ProductListView(GenericAPIView, ListModelMixin):
         return self.list(request)
 
 
+@api_view(["GET"])
+def get_one_product(request, id) -> Response:
+    product = ProductInfo.objects.filter(id=id).first()
+    if product is None:
+        return Response(
+            {"error": "Product not found"},
+            status=404
+        )
+    serializer = ProductInfoSerializer(product)
+
+    return Response(serializer.data)
+
+
 class BasketAPIView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
