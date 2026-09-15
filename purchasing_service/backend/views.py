@@ -1053,6 +1053,7 @@ class OrderAPIView(APIView):
 
                 order.status = "PROCESSING"
                 order.created_at = timezone.now()
+                order.contact = contact
                 order.save()
 
                 price = 0
