@@ -303,7 +303,9 @@ class Order(models.Model):
     )
     contact = models.ForeignKey(
         "Contact",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         verbose_name="контакты"
     )
 
