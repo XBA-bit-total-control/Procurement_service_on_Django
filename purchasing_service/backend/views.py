@@ -245,8 +245,8 @@ def data_import(request) -> Response:
                     product = Product.objects.filter(
                         name=name,
                         category=category_obj
-                    )
-                    if not product:
+                    ).first()
+                    if product is None:
                         product = Product(
                             name=name,
                             category=category_obj
