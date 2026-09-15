@@ -1,10 +1,4 @@
-import smtplib
-from email.message import EmailMessage
-
-from purchasing_service.settings import (
-    EMAIL_HOST_USER, EMAIL_HOST_PASSWORD,
-    EMAIL_HOST, EMAIL_PORT
-)
+from django.core.mail import send_mail as django_message
 
 
 def send_email(
@@ -12,15 +6,10 @@ def send_email(
         recipient: str,
         content: str
 ) -> None:
-    message = EmailMessage()
-    message["Subject"] = subject
-    message["From"] = EMAIL_HOST_USER
-    message["To"] = recipient
-    message.set_content(content)
-
-    server = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
-    server.starttls()
-    server.login(EMAIL_HOST_USER, EMAIL_HOST_PASSWORD)
-
-    server.send_message(message)
-    server.quit()
+    django_message(
+        subject=subject,
+        message=content,
+        from_email=None,
+        recipient_list=[recipient],
+        fail_silently=False
+    )
