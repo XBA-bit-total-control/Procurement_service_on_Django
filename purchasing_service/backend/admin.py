@@ -21,8 +21,8 @@ class UserAdmin(admin.ModelAdmin):
 @admin.register(Shop)
 class ShopAdmin(admin.ModelAdmin):
     list_display = ["id", "name", "url", "user", "status"]
-    list_filter = ["id", "name"]
-    search_fields = ["id", "name", "url", "user"]
+    list_filter = ["name"]
+    search_fields = ["name", "url", "user__email"]
     ordering = ["id"]
 
 
