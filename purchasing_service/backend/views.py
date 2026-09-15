@@ -636,6 +636,10 @@ class BasketAPIView(APIView):
             if check_exist_order_item:
                 raise AssertionError("The product is already in your cart")
 
+            if quantity > product_info.quantity:
+                raise AssertionError(f"There are only {product_info.quantity} units of this product available -"
+                                     f" you won't be able to order {quantity} units now")
+
             OrderItem.objects.create(
                 order=order,
                 product_info=product_info,
@@ -1062,6 +1066,15 @@ class OrderAPIView(APIView):
                         {"error": "Your cart is empty — you won’t be able to place an order"},
                         status=400
                     )
+
+                for goods in cart_contents.all():
+                    product_info = ProductInfo.objects.filter(id=goods.product_info_id).first()
+                    if product_info.quantity < goods.quantity:
+                        return Response(
+                            {"error": f"There are only {product_info.quantity} units of this product available -"
+                                      f" you won't be able to order {goods.quantity} units now"}
+                        )
+
                 serializer = OrderItemSerializer(cart_contents, many=True)
 
                 order.status = "PROCESSING"
