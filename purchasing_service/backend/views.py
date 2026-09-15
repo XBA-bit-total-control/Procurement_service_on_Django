@@ -855,10 +855,10 @@ class ContactAPIView(APIView):
     authentication_classes = [TokenAuthentication]
 
     def get(self, request) -> Response:
-        contacts = Contact.objects.filter(user=request.user)
-        if not contacts:
-            return Response({"msg": "You haven’t provided your contact information yet."})
-        serializer = OrderItemSerializer(data=contacts)
+        contacts = Contact.objects.filter(user=request.user).all()
+        if not bool(contacts):
+            return Response({"msg": "You haven’t provided your contact information yet"})
+        serializer = PutContactSerializer(contacts, many=True)
 
         return Response(serializer.data)
 
