@@ -144,6 +144,10 @@ class CustomAuthTokenSerializer(AuthTokenSerializer):
                 msq = _("Users with an unconfirmed email cannot receive an authentication token. "
                         "Complete the registration by confirming your email.")
                 raise ValidationError(msq, code='authorization')
+
+            if not user.is_active:
+                msg = _("An inactive user cannot receive a token")
+                raise ValidationError(msg, code='authorization')
         else:
             msg = _('Must include "email" and "password".')
             raise ValidationError(msg, code='authorization')
