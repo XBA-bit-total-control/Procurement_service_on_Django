@@ -447,22 +447,16 @@ def user_register_confirm(request) -> Response:
         )
 
 
-class UserDetailsListView(GenericAPIView, ListModelMixin):
+class UserDetailsAPIView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
-    filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_class = UserFilter
-    serializer_class = GetUserSerializer
-    search_fields = ["first_name", "last_name", "patronymic"]
-    queryset = User.objects.exclude(
-        is_superuser=True).exclude(
-        is_staff=True).exclude(
-        is_shop=True).all()
 
-    def get(self, request):
-        return self.list(request)
+    def get(self, request) -> Response:
+        serializer = GetUserSerializer(request.user)
 
-    def put(self, request):
+        return Response(serializer.data)
+
+    def put(self, request) -> Response:
         data = request.data
         serializer = PutUserSerializer(data=data)
         serializer.is_valid(raise_exception=True)
