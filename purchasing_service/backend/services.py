@@ -3,8 +3,11 @@ from random import choice
 
 
 def get_random_admin():
-    admins = User.objects.filter(is_staff=True).all()
-    return choice(admins)
+    try:
+        admins = User.objects.filter(is_staff=True).all()
+        return choice(admins)
+    except IndexError:
+        raise AssertionError("The project cannot work without at least one staff")
 
 
 def get_random_activ_admin():
@@ -16,5 +19,8 @@ def get_random_activ_admin():
 
 
 def get_random_superuser():
-    superusers = User.objects.filter(is_superuser=True).all()
-    return choice(superusers)
+    try:
+        superusers = User.objects.filter(is_superuser=True).all()
+        return choice(superusers)
+    except IndexError:
+        raise AssertionError("The project cannot work without at least one administrator")
