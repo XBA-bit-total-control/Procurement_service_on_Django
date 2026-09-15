@@ -744,6 +744,11 @@ class BasketAPIView(APIView):
             if order_item is None:
                 raise AssertionError(f"Your product with id={id_} is not in the cart")
 
+            product_info = ProductInfo.objects.filter(id=order_item.product_info_id).first()
+            if quantity > product_info.quantity:
+                raise AssertionError(f"There are only {product_info.quantity} units of this product available -"
+                                     f" you will not be able to add {quantity} units now")
+
             order_item.quantity = quantity
             order_item.save()
             return True
