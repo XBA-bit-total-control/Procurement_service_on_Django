@@ -115,13 +115,13 @@ class PutUserSerializer(serializers.Serializer):
     email = serializers.EmailField(required=False)
 
     def validate_first_name(self, value):
-        UserSerializer.validate_first_name(self, value)
+        return UserSerializer.validate_first_name(self, value)
 
     def validate_last_name(self, value):
-        UserSerializer.validate_last_name(self, value)
+        return UserSerializer.validate_last_name(self, value)
 
     def validate_patronymic(self, value):
-        UserSerializer.validate_patronymic(self, value)
+        return UserSerializer.validate_patronymic(self, value)
 
 
 class CustomAuthTokenSerializer(AuthTokenSerializer):
