@@ -513,10 +513,19 @@ class UserDetailsListView(GenericAPIView, ListModelMixin):
                             "msg": "Your email has been changed — please confirm it"
                         }
                     )
+                else:
+                    if len(serializer.validated_data) == 0:
+                        return Response(
+                            {"error": "No correct data was provided for change"},
+                            status=400
+                        )
                 user.update(**serializer.validated_data)
 
                 return Response(
-                    {"status": "success"}
+                    {
+                        "status": "success",
+                        "msg": f"Changed: {', '.join([value for value in serializer.validated_data.keys()])}"
+                    }
                 )
 
         except Exception:
