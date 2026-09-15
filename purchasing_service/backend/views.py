@@ -810,7 +810,13 @@ class BasketAPIView(APIView):
 
         try:
             with transaction.atomic():
-                if isinstance(items, str):
+                if isinstance(items, int):
+                    if items > 0:
+                        list_id = [items]
+                    else:
+                        raise AssertionError("id must be greater than 0")
+
+                elif isinstance(items, str):
                     if items == "":
                         raise AssertionError("The product ids in cart were not transmitted for deletion")
                     list_id = [int(num) for num in items.split(",")]
