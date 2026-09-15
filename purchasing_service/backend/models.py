@@ -1,5 +1,6 @@
 from django.contrib.auth.models import BaseUserManager, AbstractUser
 from django.db import models
+from django.utils import timezone
 
 
 class UserManager(BaseUserManager):
@@ -291,7 +292,7 @@ class Order(models.Model):
         verbose_name="пользователь"
     )
     created_at = models.DateTimeField(
-        auto_now=True,
+        default=timezone.now,
         verbose_name="создано"
     )
     status = models.CharField(
