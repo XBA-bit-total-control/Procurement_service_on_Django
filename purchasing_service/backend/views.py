@@ -621,7 +621,8 @@ class BasketAPIView(APIView):
         def add_order_item(
                 product_info_id: int,
                 quantity: int,
-                order_id: int
+                order_id: int,
+                order: Order
         ) -> bool:
             product_info = ProductInfo.objects.filter(id=product_info_id).first()
             if product_info is None:
@@ -661,19 +662,20 @@ class BasketAPIView(APIView):
             serializer_data = serializer.validated_data
 
             with transaction.atomic():
-                order = Order.objects.filter(
+                order_ = Order.objects.filter(
                     user=request.user,
                     status="NOT_CREATED"
                 ).first()
-                if order is None:
-                    order = Order.objects.create(user=request.user)
+                if order_ is None:
+                    order_ = Order.objects.create(user=request.user)
 
                 if isinstance(serializer_data, list):
                     for item in serializer_data:
                         add_order_item(
-                            item["product_info"],
-                            item["quantity"],
-                            order.id
+                            product_info_id=item["product_info"],
+                            quantity=item["quantity"],
+                            order_id=order_.id,
+                            order=order_
                         )
                     return Response(
                         {"status": "success"},
@@ -682,7 +684,12 @@ class BasketAPIView(APIView):
 
                 product_info_id_ = serializer_data["product_info"]
                 quantity_ = serializer_data["quantity"]
-                add_order_item(product_info_id_, quantity_, order.id)
+                add_order_item(
+                    product_info_id=product_info_id_,
+                    quantity=quantity_,
+                    order_id=order_.id,
+                    order=order_
+                )
                 return Response(
                     {"status": "success"},
                     status=201
