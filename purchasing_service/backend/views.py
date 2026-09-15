@@ -291,9 +291,12 @@ def data_import(request) -> Response:
                         ).save()
                     response_report.data["product_information"] += 1  # Внесение отчетности
 
-            # Формирование ответа
-            response_report.data[
-                "product_information"] = f"uploaded {response_report.data['product_information']} records"
+                # Формирование ответа
+                if response_report.data["product"] > 0:
+                    response_report.data[
+                        "product_information"] = f"uploaded {response_report.data['product_information']} records"
+                else:
+                    response_report.data.pop("product_information")
 
             return response_report
 
