@@ -25,7 +25,7 @@ from rest_framework.views import APIView
 from .data.body_of_letters import (completing_registration, order_created_for_user,
                                    order_created_for_admin, change_email_for_old,
                                    change_email_for_now, shop_registration)
-from .email_mailing import send_email
+from .tasks import send_email
 from .filters import UserFilter, ShopFilter, CategoryFilter, ProductInfoFilter
 from .models import (Category, ProductInfo, Parameter, User,
                      ProductParameter, Shop, ShopCategory, Product,
@@ -344,7 +344,7 @@ def user_register(request) -> Response:
     try:
         with transaction.atomic():
             user = User.objects.create_user(**serializer.validated_data)
-            send_email(
+            send_email.delay(
                 subject="Registration on the Compraretis ad service",
                 recipient=user.email,
                 content=completing_registration(user.registration_token),
@@ -490,7 +490,7 @@ class UserDetailsAPIView(APIView):
                     serializer.validated_data["is_confirm"] = False
                     serializer.validated_data["registration_token"] = registration_token
 
-                    send_email(
+                    send_email.delay(
                         subject="Compraretis service: change email",
                         recipient=request.user.email,
                         content=change_email_for_old(get_random_activ_admin().email),
@@ -498,7 +498,7 @@ class UserDetailsAPIView(APIView):
 
                     user.update(**serializer.validated_data)
 
-                    send_email(
+                    send_email.delay(
                         subject="Compraretis service: change email",
                         recipient=email,
                         content=change_email_for_now(registration_token),
@@ -1109,12 +1109,12 @@ class OrderAPIView(APIView):
                     user_id=request.user.id
                 )
 
-                send_email(
+                send_email.delay(
                     subject="Compraretis service: Order confirmation",
                     recipient=request.user.email,
                     content=content_for_user
                 )
-                send_email(
+                send_email.delay(
                     subject="Compraretis service: New order",
                     recipient=get_random_activ_admin().email,
                     content=content_for_admin
@@ -1160,24 +1160,27 @@ def register_partner(request) -> Response:
             status=400
         )
 
+    if isinstance(data, dict):
+        items = data.get("items")
+        if isinstance(items, str):
+            py_items = json.loads(items)
+            if len(py_items) > 1:
+                return Response(
+                    {"error": "There are too many values in the request body"},
+                    status=400
+                )
+            serializer = ShopSerializer(data=py_items)
+        else:
+            serializer = ShopSerializer(data=data)
+    else:
+        return Response(
+            {"error": "Invalid request body"},
+            status=400
+        )
+    serializer.is_valid(raise_exception=True)
+
     try:
         with transaction.atomic():
-            if isinstance(data, dict):
-                items = data.get("items")
-                if isinstance(items, str):
-                    py_items = json.loads(items)
-                    if len(py_items) > 1:
-                        return Response(
-                            {"error": "There are too many values in the request body"},
-                            status=400
-                        )
-                    serializer = ShopSerializer(data=py_items)
-                else:
-                    serializer = ShopSerializer(data=data)
-            else:
-                raise AssertionError("Invalid request body")
-
-            serializer.is_valid(raise_exception=True)
             Shop.objects.create(
                 **serializer.validated_data,
                 user=request.user
@@ -1192,7 +1195,7 @@ def register_partner(request) -> Response:
                 link_to_agreement=PARTNERSHIP_AGREEMENT
             )
 
-            send_email(
+            send_email.delay(
                 subject="Compraretis service: The beginning of the partnership",
                 recipient=request.user.email,
                 content=body_email
