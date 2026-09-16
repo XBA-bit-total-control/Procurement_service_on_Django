@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     "django_rest_passwordreset",
-    'backend',
+    "backend.apps.BackendConfig",
     "rest_framework",
     "rest_framework.authtoken",
 ]
