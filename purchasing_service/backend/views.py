@@ -25,8 +25,7 @@ from rest_framework.views import APIView
 from .data.body_of_letters import (completing_registration, order_created_for_user,
                                    order_created_for_admin, change_email_for_old,
                                    change_email_for_now, shop_registration)
-from .tasks import send_email
-from .filters import UserFilter, ShopFilter, CategoryFilter, ProductInfoFilter
+from .filters import ShopFilter, CategoryFilter, ProductInfoFilter
 from .models import (Category, ProductInfo, Parameter, User,
                      ProductParameter, Shop, ShopCategory, Product,
                      Order, OrderItem, Contact)
@@ -36,6 +35,7 @@ from .serializers import (UserSerializer, ShopSerializer, ProductInfoSerializer,
                           GetUserSerializer, PutUserSerializer, CategorySerializer,
                           PartnerOrderItemSerializer)
 from .services import get_random_activ_admin, get_random_superuser
+from .tasks import send_email
 
 
 @api_view(["POST"])
