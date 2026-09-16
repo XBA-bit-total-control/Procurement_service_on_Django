@@ -67,3 +67,18 @@ def shop_registration(
     
     Your service for Compraretis orders.
     """
+
+
+def reset_password(
+        first_name: str,
+        token: str
+) -> str:
+    return f"""
+    Hello {first_name}!
+    You received this email because a password reset was requested for your account. If you did not do this, please contact support. 
+    Your password reset token:
+    {token}
+    Remember that it is valid for an hour of time.
+    
+    Your service for Compraretis orders.
+    """
