@@ -3,6 +3,7 @@ import secrets
 
 import requests
 import yaml
+from celery.result import AsyncResult
 from django.core.validators import URLValidator, ValidationError
 from django.db import IntegrityError, transaction
 from django.http import HttpResponse
@@ -1183,3 +1184,16 @@ def data_import(request) -> Response:
         )
     else:
         return update_partner_price(user_id, dict_data)
+
+
+@api_view(["GET"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def data_import_result(request, task_id: str) -> Response:
+    task_celery = AsyncResult(task_id)
+    if task_celery.status in ["SUCCESS", "FAILURE"]:
+        return Response(task_celery.result)
+    else:
+        return Response(
+            {"msg": f"Processing data in the {task_celery.status} status"}
+        )
