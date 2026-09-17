@@ -110,7 +110,7 @@ class Shop(models.Model):
         unique=True,
         null=True,
         blank=True,
-        verbose_name="url/имя файла"
+        verbose_name="url"
     )
     status = models.CharField(
         max_length=20,
