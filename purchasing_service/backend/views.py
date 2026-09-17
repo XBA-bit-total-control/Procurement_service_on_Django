@@ -21,305 +21,21 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from yaml.parser import ParserError
 
 from .data.body_of_letters import (completing_registration, order_created_for_user,
                                    order_created_for_admin, change_email_for_old,
                                    change_email_for_now, shop_registration)
 from .filters import ShopFilter, CategoryFilter, ProductInfoFilter
-from .models import (Category, ProductInfo, Parameter, User,
-                     ProductParameter, Shop, ShopCategory, Product,
-                     Order, OrderItem, Contact)
+from .models import (Category, ProductInfo, User,
+                     Shop, Order, OrderItem, Contact)
 from .serializers import (UserSerializer, ShopSerializer, ProductInfoSerializer,
                           PostProductInfoSerializer, OrderItemSerializer, PutOrderItemSerializer,
                           ContactSerializer, PutContactSerializer, OrderSerializer,
                           GetUserSerializer, PutUserSerializer, CategorySerializer,
                           PartnerOrderItemSerializer)
 from .services import get_random_activ_admin, get_random_superuser
-from .tasks import send_email
-
-
-@api_view(["POST"])
-@authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
-def data_import(request) -> Response:
-    """
-    A view for importing data from the url
-    of the format referring to the file.yaml
-
-    :returns: Response with json content
-    """
-    # Проверка является ли пользователь магазином/партнером
-    if not request.user.is_shop:
-        return Response(
-            {"error": "You are not our partner"},
-            status=403
-        )
-
-    data = request.data
-    url = data.get("url")
-    if not url:
-        return Response(
-            {"error": "Url was not sent"},
-            status=400
-        )
-
-    # Проверка валидности url
-    check_url = URLValidator()
-    try:
-        check_url(url)
-    except ValidationError:
-        return Response(
-            {"error": "An invalid url was sent"},
-            status=400
-        )
-
-    # Попытка получить данные
-    try:
-        for _ in range(3):
-            response = requests.get(url)
-            if response.status_code == 200:
-                break
-        else:
-            return Response(
-                {"error": "No data was received from the transmitted url"},
-                status=400
-            )
-    except ConnectTimeout:
-        return Response(
-            {"error": "It was not possible to contact the server using "
-                      "the transmitted url - no response was received from it"},
-            status=400
-        )
-    except ConnectionError:
-        return Response(
-            {"error": "It is not possible to establish a connection "
-                      "to receive data at the specified url"},
-            status=400
-        )
-
-    # Извлечение данных
-    yaml_data = response.content
-    dict_data = yaml.safe_load(yaml_data)
-
-    # Подготовка ответа в виде небольшого отчета
-    response_report = Response(data={"status": "success"})
-    response_report.status_code = 201
-
-    categories = dict_data.get("categories")
-    goods = dict_data.get("goods")
-    shop = dict_data.get("shop")
-    if shop is None:
-        return Response(
-            {"error": "Data import error. The required 'shop' field was not specified"},
-            status=400
-        )
-    shop_obj = Shop.objects.filter(name=shop).first()
-    if not shop_obj:
-        return Response(
-            {"error": f"Data import error. The specified store '{shop}' does not exist. "
-                      f"Create a store or change its name"},
-            status=400
-        )
-    if categories is None and goods is None:
-        return Response(
-            {"error": "Data import error. There is no record data in the provided URL information"},
-            status=400
-        )
-    try:
-        with transaction.atomic():
-            # Блок проверки и записи категорий
-            if categories:
-                response_report.data["categories"] = 0
-                for category in categories:
-                    id = category.get("id")
-                    name = category.get("name")
-                    if not name:
-                        raise AssertionError("The required category name was not "
-                                             "specified in the file submitted for data import")
-
-                    if id:
-                        category_obj = Category.objects.filter(id=id).first()
-                        if category_obj:
-                            if category_obj.name != name:
-                                return Response(
-                                    {"error": f"This id={id} is already in use for the category - select another"},
-                                    status=400
-                                )
-                        else:
-                            category_obj = Category.objects.create(
-                                id=id,
-                                name=name,
-                            )
-                            created = True
-                    else:
-                        category_obj, created = Category.objects.get_or_create(
-                            name=name,
-                            defaults={"name": name}
-                        )
-                    if created:
-                        ShopCategory.objects.create(
-                            shop=shop_obj,
-                            category=category_obj
-                        )
-                        response_report.data["categories"] += 1  # Внесение отчетности
-
-                # Фиксация внесенных изменений
-                if response_report.data["categories"] > 0:
-                    response_report.data["categories"] = f"uploaded {response_report.data["categories"]} records"
-                else:
-                    response_report.data.pop("categories")
-
-            # Блок проверки и записи товаров
-            if goods:
-                response_report.data["product_information"] = 0  # Добавление блока для ответа
-                for good in goods:
-                    category = good.get("category")
-                    if not category:
-                        raise AssertionError("Product was not assigned a category attribute")
-                    else:
-                        if not isinstance(category, int):
-                            raise AssertionError("The category attribute must be a string")
-
-                    id = good.get("id")
-                    if id:
-                        if not isinstance(id, int):
-                            raise AssertionError("The id attribute must be a string")
-                        # Проверка на наличие информации о товаре
-                        check_obj_by_id = ProductInfo.objects.filter(id=id).first()
-                        if check_obj_by_id:
-                            raise AssertionError(f"The product info with id={id} already exists")
-
-                    model = good.get("model")
-                    if not model:
-                        raise AssertionError("Product was not assigned a model attribute")
-                    else:
-                        if not isinstance(model, str):
-                            raise AssertionError("The model attribute must be a string")
-
-                    name = good.get("name")
-                    if not name:
-                        raise AssertionError("Product was not assigned a name attribute")
-                    else:
-                        if not isinstance(name, str):
-                            raise AssertionError("The name attribute must be a string")
-
-                    parameters = good.get("parameters")
-                    if parameters:
-                        if not isinstance(parameters, dict):
-                            raise AssertionError("The parameters attribute must be a dictionary")
-                        for parameter, value in parameters.items():
-                            if not isinstance(parameter, str):
-                                raise AssertionError("Parameter name/key must be a string")
-                            if not isinstance(value, str | int | float | bool):
-                                raise AssertionError("Parameter value must be a string, number, or boolean")
-
-                    price = good.get("price")
-                    if not price:
-                        raise AssertionError("Product was not assigned a price attribute")
-                    else:
-                        if not isinstance(price, int | float):
-                            raise AssertionError("The price attribute must be a number")
-                        if price < 0:
-                            raise AssertionError("The price attribute must be a positive number")
-
-                    price_rrc = good.get("price_rrc")
-                    if price_rrc:
-                        if not isinstance(price_rrc, int | float):
-                            raise AssertionError("The price_rrc attribute must be a number")
-                        if price_rrc < 0:
-                            raise AssertionError("The price_rrc attribute must be a positive number")
-
-                    quantity = good.get("quantity")
-                    if not quantity:
-                        raise AssertionError("Product was not assigned a quantity attribute")
-                    else:
-                        if not isinstance(quantity, int):
-                            raise AssertionError("The quantity attribute must be a number")
-                        if quantity <= 0:
-                            raise AssertionError("The quantity attribute must be a positive number")
-
-                    category_obj = Category.objects.filter(id=category).first()
-                    if not category_obj:
-                        raise AssertionError(f"Category with id={category} does not exist")
-
-                    product = Product.objects.filter(
-                        name=name,
-                        category=category_obj
-                    ).first()
-                    if product is None:
-                        product = Product(
-                            name=name,
-                            category=category_obj
-                        )
-                        product.save()
-
-                    if id:
-                        product_info = ProductInfo(
-                            id=id,
-                            product=product,
-                            shop=shop_obj,
-                            model=model,
-                            name=name,
-                            price=price,
-                            price_rrc=price_rrc,
-                            quantity=quantity
-                        )
-                        product_info.save()
-                    else:
-                        product_info = ProductInfo(
-                            product=product,
-                            shop=shop_obj,
-                            model=model,
-                            name=name,
-                            price=price,
-                            price_rrc=price_rrc,
-                            quantity=quantity
-                        )
-                        product_info.save()
-
-                    for parameter, value in parameters.items():
-                        if isinstance(value, bool):
-                            value = str(value)
-                        parameter, _ = Parameter.objects.get_or_create(
-                            name=parameter,
-                            defaults={"name": parameter}
-                        )
-                        ProductParameter(
-                            product_info=product_info,
-                            parameter=parameter,
-                            value=value
-                        ).save()
-                    response_report.data["product_information"] += 1  # Внесение отчетности
-
-                # Формирование ответа
-                if response_report.data["product"] > 0:
-                    response_report.data[
-                        "product_information"] = f"uploaded {response_report.data['product_information']} records"
-                else:
-                    response_report.data.pop("product_information")
-
-            return response_report
-
-    except AssertionError as err:
-        return Response(
-            {
-                "status": "fail",
-                "error": err.__str__()
-            },
-            status=400
-        )
-    except IntegrityError:
-        return Response(
-            {"error": f"Data import error."
-                      f" The request has been rejected due to a data conflict."},
-            status=400
-        )
-    except Exception:
-        return Response(
-            {"error": f"Internal server error. "
-                      f"If this happens again, please contact the administrator {get_random_superuser().email}"},
-            status=500
-        )
+from .tasks import send_email, update_partner_price
 
 
 @api_view(["POST"])
@@ -1389,3 +1105,81 @@ class PartnerOrdersAPIView(APIView):
         serializer = PartnerOrderItemSerializer(order_items, many=True)
 
         return Response(serializer.data)
+
+
+@api_view(["POST"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def data_import(request) -> Response:
+    # Проверка является ли пользователь магазином/партнером
+    if not request.user.is_shop:
+        return Response(
+            {"error": "You are not our partner"},
+            status=403
+        )
+
+    data = request.data
+    url = data.get("url")
+    if not url:
+        return Response(
+            {"error": "Url was not sent"},
+            status=400
+        )
+
+    # Проверка валидности url
+    check_url = URLValidator()
+    try:
+        check_url(url)
+    except ValidationError:
+        return Response(
+            {"error": "An invalid url was sent"},
+            status=400
+        )
+
+    # Попытка получить данные
+    try:
+        for _ in range(3):
+            response = requests.get(url)
+            if response.status_code == 200:
+                break
+        else:
+            return Response(
+                {"error": "No data was received from the transmitted url"},
+                status=400
+            )
+    except ConnectTimeout:
+        return Response(
+            {"error": "It was not possible to contact the server using "
+                      "the transmitted url - no response was received from it"},
+            status=400
+        )
+    except ConnectionError:
+        return Response(
+            {"error": "It is not possible to establish a connection "
+                      "to receive data at the specified url"},
+            status=400
+        )
+
+    # Извлечение данных
+    yaml_data = response.content
+    try:
+        dict_data = yaml.safe_load(yaml_data)
+    except ParserError:
+        return Response(
+            {"error": "Invalid data format in a YAML file"},
+            status=400
+        )
+
+    user_id = request.user.id
+    if len(yaml_data) > 10000:
+        task_celery = update_partner_price.delay(user_id, dict_data, for_celery=True)
+        return Response(
+            {
+                "status": "success",
+                "msg": f"The data has been accepted for processing - you can get the result"
+                       f" from the resource api/v1/partner/data_import/result/{task_celery.id}"
+            },
+            status=201
+        )
+    else:
+        return update_partner_price(user_id, dict_data)
