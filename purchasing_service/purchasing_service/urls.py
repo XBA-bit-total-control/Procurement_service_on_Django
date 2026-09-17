@@ -17,24 +17,35 @@ Including another URLconf
 from backend.authentication import custom_obtain_auth_token
 from backend.views import (data_import, user_register, user_register_confirm,
                            ShopListView, ProductListView, BasketAPIView,
-                           ContactAPIView, OrderAPIView, UserDetailsListView,
-                           CategoriesListView)
+                           ContactAPIView, OrderAPIView, UserDetailsAPIView,
+                           CategoriesListView, PartnerStateAPIView, register_partner,
+                           register_partner_confirm, PartnerOrdersAPIView, get_one_product,
+                           data_import_result)
 from django.contrib import admin
 from django.urls import path, include
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/v1/partner/data_import', data_import),
+
     path('api/v1/user/register', user_register),
     path('api/v1/user/register/confirm', user_register_confirm),
-    path('api/v1/user/', include('django_rest_passwordreset.urls')),
+    path('api/v1/user/password_reset/', include('django_rest_passwordreset.urls')),
     path('api/v1/user/login', custom_obtain_auth_token),
-    path('api/v1/user/details', UserDetailsListView.as_view()),
+    path('api/v1/user/details', UserDetailsAPIView.as_view()),
     path('api/v1/user/contact', ContactAPIView.as_view()),
+
+    path('api/v1/partner/register', register_partner),
+    path('api/v1/partner/register/confirm', register_partner_confirm),
+    path('api/v1/partner/state', PartnerStateAPIView.as_view()),
+    path('api/v1/partner/orders', PartnerOrdersAPIView.as_view()),
+    path('api/v1/partner/goods', data_import),
+    path('api/v1/partner/goods/results/<str:task_id>', data_import_result),
+
     path('api/v1/shops', ShopListView.as_view()),
     path('api/v1/categories', CategoriesListView.as_view()),
     path('api/v1/products', ProductListView.as_view()),
+    path('api/v1/products/<int:id>', get_one_product),
     path('api/v1/basket', BasketAPIView.as_view()),
-    path('api/v1/order', OrderAPIView.as_view()),
+    path('api/v1/order', OrderAPIView.as_view())
 ]
