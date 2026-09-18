@@ -1,3 +1,8 @@
+"""Создание приложения Celery.
+
+Для конфигурации используются настройки из settings.py
+"""
+
 import os
 
 from celery import Celery
