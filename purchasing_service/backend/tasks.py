@@ -14,6 +14,16 @@ def send_email(
         recipient: str,
         content: str
 ) -> bool:
+    """Функция отправки email.
+
+    Args:
+        subject: тема письма
+        recipient: получатель
+        content: содержимое письма
+
+    Returns:
+        bool: True при успешной отправке.
+    """
     django_message(
         subject=subject,
         message=content,
@@ -30,6 +40,18 @@ def update_partner_price(
         dict_data: dict,
         for_celery: bool = False
 ) -> Response | dict:
+    """Функция обновление прайса партнера.
+
+    Args:
+        user_id: идентификатор пользователя
+        dict_data: данные для обновления
+        for_celery: флаг для передачи celery
+
+    Returns:
+        Response: без передачи celery.
+        dict: при передаче celery.
+    """
+
     def check_changes_in_product_info(
             product_info_obj,
             name,
@@ -38,6 +60,19 @@ def update_partner_price(
             price_rrc,
             quantity
     ) -> bool:
+        """Внутренняя функция проверки наличия изменений в информации о продукте.
+
+        Args:
+            product_info_obj: QuerySet
+            name: название
+            model: модель
+            price: цена
+            price_rrc: розничная цена
+            quantity: количество
+
+        Returns:
+            bool: True, если есть изменения, иначе False.
+        """
         product_info_obj = product_info_obj.first()
         if product_info_obj.name != name:
             return True
@@ -56,12 +91,27 @@ def update_partner_price(
             user_id_: int,
             dict_data_: dict,
     ) -> Response:
+        """Внутренняя функция обработки данных.
+
+        При успешной и обработке с результатом предоставляется
+        отчет пользователю о выполнении операции.
+
+        Args:
+            user_id_: идентификатор пользователя
+            dict_data_: словарь с данными
+
+        Returns:
+            Response: сформированный ответ.
+        """
+        # Создание переменной для ответа-отчета
         response_report = Response(data={"status": "success"})
         response_report.status_code = 201
 
         categories = dict_data_.get("categories")
         goods = dict_data_.get("goods")
         shop = dict_data_.get("shop")
+        # Указание магазина необязательно, но если он указан и не принадлежит
+        # пользователю, то выбрасывается исключение
         if shop:
             shop_obj = Shop.objects.filter(name=shop).first()
             if shop_obj is None:
@@ -81,23 +131,23 @@ def update_partner_price(
                     {"error": "There is no store owned by you"},
                     status=404
                 )
-
+        # Проверка на наличие данных для импорта
         if categories is None and goods is None:
             return Response(
                 {"error": "There is no record data in the provided URL information"},
                 status=400
             )
         try:
-            with transaction.atomic():
+            with transaction.atomic():  # Защита от неполного импорта
                 if categories:
-                    response_report.data["created_categories"] = 0
+                    response_report.data["created_categories"] = 0  # Отчетность
+                    # Блок обработки категорий
                     for category in categories:
                         id = category.get("id")
                         name = category.get("name")
                         if name is None:
                             raise AssertionError("The required category name was not "
                                                  "specified in the file submitted for data import")
-
                         if id:
                             category_obj = Category.objects.filter(id=id).first()
                             if category_obj:
@@ -124,12 +174,14 @@ def update_partner_price(
                                 shop=shop_obj,
                                 category=category_obj
                             )
-                            response_report.data["created_categories"] += 1
+                            response_report.data["created_categories"] += 1  # Отчетность
 
+                    # При отсутствии созданных категорий, удаляется ключ в отчете
                     if response_report.data["created_categories"] == 0:
                         response_report.data.pop("created_categories")
 
                 if goods:
+                    # Формирование полей для ответа-отчета
                     response_report.data["created_product_information"] = 0
                     response_report.data["updated_product_information"] = 0
                     response_report.data["deleted_product_information"] = 0
@@ -138,7 +190,9 @@ def update_partner_price(
                     response_report.data["updated_product_parameters"] = 0
                     response_report.data["deleted_product_parameters"] = 0
 
+                    # Блок обработки товаров
                     for good in goods:
+                        # Указание категории допустимо идентификатором или названием
                         category = good.pop("category", None)
                         if category is None:
                             raise AssertionError("Product was not assigned a category attribute")
@@ -146,6 +200,7 @@ def update_partner_price(
                             if not isinstance(category, int | str):
                                 raise AssertionError("The category attribute must be a string or a number")
 
+                        # Указание идентификатора товара подразумевает его обновление
                         id = good.pop("id", None)
                         if id:
                             if not isinstance(id, int):
@@ -197,6 +252,7 @@ def update_partner_price(
                             if price_rrc < 0:
                                 raise AssertionError("The price_rrc attribute must be a positive number")
 
+                        # Указание None для значения количества подразумевает сигнал на удаление
                         quantity = good.get("quantity")
                         if quantity is None and id is None:
                             raise AssertionError("You cannot delete product information that has not been created")
@@ -216,16 +272,16 @@ def update_partner_price(
                             if isinstance(category, int) else f"'{category}'"} does not exist")
 
                         if id:
-                            if quantity is None:
+                            if quantity is None:  # Удаление информации о товаре
                                 product_info_obj.delete()
-                                response_report.data["deleted_product_information"] += 1
+                                response_report.data["deleted_product_information"] += 1  # Отчетность
                                 continue
-                            else:
+                            else:  # Обновление информации о товаре, при наличии изменений
                                 if check_changes_in_product_info(product_info_obj, name, model,
                                                                  price, price_rrc, quantity):
                                     product_info_obj.update(**good)
-                                    response_report.data["updated_product_information"] += 1
-                        else:
+                                    response_report.data["updated_product_information"] += 1  # Отчетность
+                        else:  # Создание информации о товаре, если записи ещё нет
                             product_obj, created = Product.objects.get_or_create(
                                 name=name,
                                 category=category_obj,
@@ -242,9 +298,10 @@ def update_partner_price(
                                 shop=shop_obj,
                                 product=product_obj
                             )
-                            response_report.data["created_product_information"] += 1
+                            response_report.data["created_product_information"] += 1  # Отчетность
 
                         if parameters:
+                            # Блок обработки параметров
                             for parameter, value in parameters.items():
                                 if isinstance(value, bool):
                                     value = str(value)
@@ -252,6 +309,7 @@ def update_partner_price(
                                     name=parameter,
                                     defaults={"name": parameter}
                                 )
+                                # Указание None для значения существующего параметра подразумевает его удаление
                                 if value is not None:
                                     if id:
                                         product_info_obj = ProductInfo.objects.filter(id=id).first()
@@ -264,14 +322,14 @@ def update_partner_price(
                                             "value": value
                                         }
                                     )
-                                    if not created:
+                                    if not created:  # Обновление при наличии изменений
                                         if product_parameter_obj.value != str(value):
                                             product_parameter_obj.value = value
                                             product_parameter_obj.save()
-                                            response_report.data["updated_product_parameters"] += 1
-                                    else:
-                                        response_report.data["created_product_parameters"] += 1
-                                else:
+                                            response_report.data["updated_product_parameters"] += 1  # Отчетность
+                                    else:  # Создание при отсутствии
+                                        response_report.data["created_product_parameters"] += 1  # Отчетность
+                                else:  # Удаление параметра
                                     product_parameter_obj = ProductParameter.objects.filter(
                                         product_info=product_info_obj,
                                         parameter=parameter_obj
@@ -280,8 +338,9 @@ def update_partner_price(
                                         raise AssertionError(f"It is impossible to delete a parameter '{parameter}'"
                                                              " that does not exist")
                                     product_parameter_obj.delete()
-                                    response_report.data["deleted_product_parameters"] += 1
+                                    response_report.data["deleted_product_parameters"] += 1  # Отчетность
 
+                    # Обработка и удаление пустых полей для ответа-отчета
                     if response_report.data["created_product_information"] == 0:
                         response_report.data.pop("created_product_information")
                     if response_report.data["updated_product_information"] == 0:
@@ -295,11 +354,13 @@ def update_partner_price(
                     if response_report.data["deleted_product_parameters"] == 0:
                         response_report.data.pop("deleted_product_parameters")
 
+                # Проверка на наличие изменений
                 if len(response_report.data) == 1:
                     response_report.status_code = 200
                     response_report.data["msg"] = "No changes"
                 return response_report
 
+        # Блок обработки ошибок
         except AssertionError as err:
             return Response(
                 {
@@ -330,6 +391,7 @@ def update_partner_price(
                 status=500
             )
 
+    # Возвращение результата в соответствии с установленным флагом для Celery
     result = execution(user_id, dict_data)
     if for_celery:
         return result.data
