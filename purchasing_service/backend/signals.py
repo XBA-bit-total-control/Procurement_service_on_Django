@@ -7,6 +7,10 @@ from .tasks import send_email
 
 @receiver(reset_password_token_created)
 def email_about_password_change(reset_password_token, *args, **kwargs):
+    """Обработчик сигналов для django_rest_passwordreset.
+
+    Направляет задачу Celery для отправки письма с токеном для сброса пароля.
+    """
     email = reset_password_token.user.email
     first_name = reset_password_token.user.first_name
     token = reset_password_token.key
