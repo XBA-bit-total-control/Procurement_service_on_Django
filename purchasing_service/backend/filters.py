@@ -4,6 +4,11 @@ from .models import Shop, Category, ProductInfo
 
 
 class ShopFilter(django_filters.FilterSet):
+    """Класс-фильтр для магазинов.
+
+    Предоставляет фильтрацию по идентификатору, точному названию, совпадению в названии,
+    точной ссылке, совпадению в ссылке и отсутствию ссылки.
+    """
     id = django_filters.NumberFilter(field_name='id')
 
     name = django_filters.CharFilter(field_name='name')
@@ -28,6 +33,11 @@ class ShopFilter(django_filters.FilterSet):
 
 
 class CategoryFilter(django_filters.FilterSet):
+    """Класс-фильтр для категорий.
+
+    Предоставляет фильтрацию по идентификатору, точному названию
+    и совпадению в названии.
+    """
     id = django_filters.NumberFilter(field_name='id')
 
     name = django_filters.CharFilter(field_name='name')
@@ -42,6 +52,14 @@ class CategoryFilter(django_filters.FilterSet):
 
 
 class ProductInfoFilter(django_filters.FilterSet):
+    """Класс-фильтр для информации о товаре.
+
+    Предоставляет фильтрацию:
+        - по идентификатору для: записи, товара, магазина и категории.
+        - по точному названию и совпадению в нём для: модели и имени.
+        - по значению ><= для: количества, цены и розничной цены.
+    """
+
     id = django_filters.NumberFilter(field_name='id')
     product_id = django_filters.NumberFilter(field_name='product_id')
     shop_id = django_filters.NumberFilter(field_name='shop_id')
