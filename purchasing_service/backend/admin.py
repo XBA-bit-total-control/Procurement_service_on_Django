@@ -7,12 +7,14 @@ from .models import (Shop, ShopCategory, Category, Product,
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
+    """Представление модели User в админке."""
+
     list_display = ["id", "first_name", "last_name", "patronymic",
                     "email", "registration_token", "is_active", "is_shop",
                     "is_confirm", "is_staff", "is_superuser"]
     list_filter = ["id", "first_name", "last_name", "patronymic",
-                    "email", "is_active", "is_shop",
-                    "is_confirm", "is_staff", "is_superuser"]
+                   "email", "is_active", "is_shop",
+                   "is_confirm", "is_staff", "is_superuser"]
     search_fields = ["id", "first_name", "last_name",
                      "patronymic", "email"]
     ordering = ["id"]
@@ -20,6 +22,8 @@ class UserAdmin(admin.ModelAdmin):
 
 @admin.register(Shop)
 class ShopAdmin(admin.ModelAdmin):
+    """Представление модели Shop в админке."""
+
     list_display = ["id", "name", "url", "user", "status"]
     list_filter = ["name"]
     search_fields = ["name", "url", "user__email"]
@@ -27,12 +31,18 @@ class ShopAdmin(admin.ModelAdmin):
 
 
 class ShopCategoryInline(admin.TabularInline):
+    """
+    Класс добавляющий специализированные поля при создании категории
+    для установки связей с магазинами.
+    """
     model = ShopCategory
     extra = 3
 
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
+    """Представление модели Category в админке."""
+
     list_display = ["id", "name"]
     list_filter = ["id", "name"]
     search_fields = ["id", "name"]
@@ -42,6 +52,8 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(ShopCategory)
 class ShopCategoryAdmin(admin.ModelAdmin):
+    """Представление связующей модели ShopCategory в админке."""
+
     list_display = ["id", "shop", "category"]
     list_filter = ["id", "shop", "category"]
     search_fields = ["id"]
@@ -50,6 +62,8 @@ class ShopCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
+    """Представление модели Product в админке."""
+
     list_display = ["id", "name", "category"]
     list_filter = ["id", "name", "category"]
     search_fields = ["id", "name"]
@@ -58,6 +72,8 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(ProductInfo)
 class ProductInfoAdmin(admin.ModelAdmin):
+    """Представление модели ProductInfo в админке."""
+
     list_display = ["id", "product", "shop", "name",
                     "quantity", "price", "price_rrc"]
     list_filter = ["id", "product", "shop", "name",
@@ -69,6 +85,8 @@ class ProductInfoAdmin(admin.ModelAdmin):
 
 @admin.register(Parameter)
 class ParameterAdmin(admin.ModelAdmin):
+    """Представление модели Parameter в админке."""
+
     list_display = ["id", "name"]
     list_filter = ["id", "name"]
     search_fields = ["id", "name"]
@@ -77,6 +95,8 @@ class ParameterAdmin(admin.ModelAdmin):
 
 @admin.register(ProductParameter)
 class ProductParameterAdmin(admin.ModelAdmin):
+    """Представление модели ProductParameter в админке."""
+
     list_display = ["id", "product_info", "parameter", "value"]
     list_filter = ["id", "product_info", "parameter", "value"]
     search_fields = ["id", "value"]
@@ -85,6 +105,8 @@ class ProductParameterAdmin(admin.ModelAdmin):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
+    """Представление модели Order в админке."""
+
     list_display = ["id", "user", "created_at", "status", "contact"]
     list_filter = ["id", "user", "created_at", "status", "contact"]
     search_fields = ["id", "created_at", "status"]
@@ -93,6 +115,8 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
+    """Представление модели OrderItem в админке."""
+
     list_display = ["id", "order", "product_info", "shop", "quantity"]
     list_filter = ["id", "order", "product_info", "shop", "quantity"]
     search_fields = ["id", "quantity"]
@@ -101,6 +125,8 @@ class OrderItemAdmin(admin.ModelAdmin):
 
 @admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):
+    """Представление модели Contact в админке."""
+
     list_display = ["id", "user", "telephone", "settlement", "street",
                     "house", "structure", "building", "flat", "comment"]
     list_filter = ["id", "user", "telephone", "settlement", "street",
