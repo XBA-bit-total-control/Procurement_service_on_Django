@@ -143,6 +143,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = "backend.User"
 
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.TokenAuthentication"
@@ -152,6 +153,8 @@ REST_FRAMEWORK = {
 
 PARTNERSHIP_AGREEMENT = os.getenv("PARTNERSHIP_AGREEMENT", "https://disk.yandex.ru/i/vWoaXZfsLSk2dw")
 
+
+# Variables for working with email
 
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
@@ -167,6 +170,8 @@ if all([EMAIL_USE_TLS, EMAIL_USE_SSL]):
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 EMAIL_BACKEND = f"django.core.mail.backends.{os.getenv("EMAIL_BACKEND", "smtp")}.EmailBackend"
 
+
+# Variables for Celery
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
