@@ -41,6 +41,11 @@ from .tasks import send_email, update_partner_price
 
 @api_view(["POST"])
 def user_register(request) -> Response:
+    """Обработчик регистрации пользователя.
+
+    Создаёт запись с неподтверждённым пользователем и отправляет письмо
+    с токеном для завершения регистрации.
+    """
     data = request.data
 
     serializer = UserSerializer(data=data)
@@ -92,6 +97,10 @@ def user_register(request) -> Response:
 
 @api_view(["POST"])
 def user_register_confirm(request) -> Response:
+    """Обработчик завершения регистрации пользователя.
+
+    Проверяет переданный токен и подтверждает профиль пользователя.
+    """
     data = request.data
 
     email = data.get("email")
@@ -168,6 +177,8 @@ def user_register_confirm(request) -> Response:
 
 
 class UserDetailsAPIView(APIView):
+    """Представление для получения и обновления данных пользователя."""
+
     permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
@@ -185,7 +196,7 @@ class UserDetailsAPIView(APIView):
             with transaction.atomic():
                 user = User.objects.filter(id=request.user.id)
                 email = serializer.validated_data.get("email")
-                if email is not None:
+                if email is not None:  # Предоставляется возможность смены email
                     check_exist_email = User.objects.filter(email=email, is_confirm=True).first()
                     if check_exist_email is not None:
                         return Response(
@@ -197,16 +208,18 @@ class UserDetailsAPIView(APIView):
                         if check_unconfirm_email is not None:
                             check_unconfirm_email.delete()
 
+                    # Все существующие токены пользователя удаляются
                     tokens_for_delete = Token.objects.filter(user=request.user).all()
                     if tokens_for_delete:
                         for token in tokens_for_delete:
                             token.delete()
 
                     registration_token = secrets.token_urlsafe(12)
-
+                    # Профиль пользователя назначается не подтвержденным
                     serializer.validated_data["is_confirm"] = False
                     serializer.validated_data["registration_token"] = registration_token
 
+                    # Уведомления пользователя по старому email и о его изменении
                     send_email.delay(
                         subject="Compraretis service: change email",
                         recipient=request.user.email,
@@ -215,6 +228,7 @@ class UserDetailsAPIView(APIView):
 
                     user.update(**serializer.validated_data)
 
+                    # Письмо для подтверждения профиля на новый email
                     send_email.delay(
                         subject="Compraretis service: change email",
                         recipient=email,
@@ -235,6 +249,7 @@ class UserDetailsAPIView(APIView):
                         )
                 user.update(**serializer.validated_data)
 
+                # В ответе уточняются измененные поля для понимания пользователя
                 return Response(
                     {
                         "status": "success",
@@ -251,6 +266,10 @@ class UserDetailsAPIView(APIView):
 
 
 class ShopListView(GenericAPIView, ListModelMixin):
+    """Представление для получения магазинов.
+
+    Аутентификация не требуется.
+    """
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_class = ShopFilter
     search_fields = ["name", "url"]
@@ -264,6 +283,10 @@ class ShopListView(GenericAPIView, ListModelMixin):
 
 
 class CategoriesListView(GenericAPIView, ListModelMixin):
+    """Представление для получения категорий.
+
+    Аутентификация не требуется.
+    """
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_class = CategoryFilter
     search_fields = ["name"]
@@ -277,6 +300,10 @@ class CategoriesListView(GenericAPIView, ListModelMixin):
 
 
 class ProductListView(GenericAPIView, ListModelMixin):
+    """Представление для получения информации о товарах.
+
+    Аутентификация не требуется.
+    """
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_class = ProductInfoFilter
     search_fields = ["name"]
@@ -291,6 +318,8 @@ class ProductListView(GenericAPIView, ListModelMixin):
 
 @api_view(["GET"])
 def get_one_product(request, id) -> Response:
+    """Обработчик для получения информации о товаре по идентификатору."""
+
     product = ProductInfo.objects.filter(id=id).first()
     if product is None:
         return Response(
@@ -303,10 +332,16 @@ def get_one_product(request, id) -> Response:
 
 
 class BasketAPIView(APIView):
+    """Представление для работы с корзиной пользователя."""
+
     permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request):
+        """Получение содержимого корзины при его наличии.
+
+        В ответе вместе с содержимым корзины предоставляется её общая стоимость.
+        """
         order = Order.objects.filter(
             user=request.user,
             status="NOT_CREATED"
@@ -335,12 +370,29 @@ class BasketAPIView(APIView):
         return Response(data)
 
     def post(self, request):
+        """Добавление товара в корзину."""
+
         def add_order_item(
                 product_info_id: int,
                 quantity: int,
                 order_id: int,
                 order: Order
         ) -> bool:
+            """Внутренняя функция для добавления товара в корзину.
+
+            Args:
+                product_info_id: идентификатор информации о товаре
+                quantity: количество
+                order_id: идентификатор заказа
+                order: объект заказа
+
+            Raises:
+                AssertionError: когда товар не существует, уже есть в корзине
+                    или запрашиваемое количество отсутствует в магазине.
+
+            Returns:
+                bool: True, если товар добавлен.
+            """
             product_info = ProductInfo.objects.filter(id=product_info_id).first()
             if product_info is None:
                 raise AssertionError(f"Product with id={product_info_id} not found")
@@ -446,7 +498,21 @@ class BasketAPIView(APIView):
             )
 
     def put(self, request) -> Response:
+        """Изменение количества товара в корзине."""
+
         def change_quantity(values_: dict) -> bool:
+            """Внутренняя функция для изменения количества товара в корзине.
+
+            Args:
+                values_: словарь с данными
+
+            Raises:
+                AssertionError: если количество товара превышает имеющееся в наличии
+                    или товара нет в корзине.
+
+            Returns:
+                bool: True при успешном выполнении.
+            """
             serializer = PutOrderItemSerializer(data=values_)
             serializer.is_valid(raise_exception=True)
             serializer_data = serializer.validated_data
@@ -522,6 +588,8 @@ class BasketAPIView(APIView):
             )
 
     def delete(self, request) -> Response:
+        """Удаление товаров из корзины."""
+
         data = request.data
         items = data.get("items")
 
@@ -596,10 +664,14 @@ class BasketAPIView(APIView):
 
 
 class ContactAPIView(APIView):
+    """Преставление для работы с контактами пользователя."""
+
     permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request) -> Response:
+        """Получение списка контактов пользователя, при наличии."""
+
         contacts = Contact.objects.filter(user=request.user).all()
         if not bool(contacts):
             return Response({"msg": "You haven’t provided your contact information yet"})
@@ -608,6 +680,10 @@ class ContactAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request) -> Response:
+        """Создание нового контакта.
+
+        Ограничение на количество контактов - 5.
+        """
         serializer = ContactSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -627,6 +703,8 @@ class ContactAPIView(APIView):
         )
 
     def put(self, request) -> Response:
+        """Изменение контакта."""
+
         data = request.data
         if not data:
             return Response(
@@ -634,6 +712,7 @@ class ContactAPIView(APIView):
                 status=400
             )
 
+        # Проверка на null значения для недопустимых полей
         not_null_fields = ["settlement", "building", "house", "telephone"]
         for key, value in data.items():
             if key in not_null_fields and value is None:
@@ -658,6 +737,8 @@ class ContactAPIView(APIView):
         return Response({"status": "success"})
 
     def delete(self, request) -> HttpResponse | Response:
+        """Удаление контакта."""
+
         data = request.data
         items = data.get("items")
 
@@ -732,16 +813,22 @@ class ContactAPIView(APIView):
 
 
 class OrderAPIView(APIView):
+    """Представление для работы с заказами."""
+
     permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request):
+        """Получение списка заказов."""
+
         orders = Order.objects.filter(user=request.user).exclude(status="NOT_CREATED").all()
         serializer = OrderSerializer(orders, many=True)
 
         return Response(serializer.data)
 
     def post(self, request):
+        """Создание заказа."""
+
         data = request.data
         try:
             with transaction.atomic():
@@ -785,6 +872,7 @@ class OrderAPIView(APIView):
                         status=404
                     )
 
+                # Проверка на наличие товаров в корзине
                 cart_contents = OrderItem.objects.select_related("order").filter(
                     order__user_id=request.user.id,
                     order__status="NOT_CREATED"
@@ -795,6 +883,7 @@ class OrderAPIView(APIView):
                         status=400
                     )
 
+                # Проверка на наличие нужного количеств товара в магазине
                 for goods in cart_contents.all():
                     product_info = ProductInfo.objects.filter(id=goods.product_info_id).first()
                     if product_info.quantity < goods.quantity:
@@ -810,6 +899,7 @@ class OrderAPIView(APIView):
                 order.contact = contact
                 order.save()
 
+                # Формирование общей цены заказа
                 price = 0
                 for cart_contents in serializer.data:
                     price += cart_contents["common_price"]
@@ -826,11 +916,13 @@ class OrderAPIView(APIView):
                     user_id=request.user.id
                 )
 
+                # Отправка письма пользователю о принятии заказа в обработку
                 send_email.delay(
                     subject="Compraretis service: Order confirmation",
                     recipient=request.user.email,
                     content=content_for_user
                 )
+                # Отправка письма сотруднику на проверку и подтверждение
                 send_email.delay(
                     subject="Compraretis service: New order",
                     recipient=get_random_activ_admin().email,
@@ -859,6 +951,12 @@ class OrderAPIView(APIView):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def register_partner(request) -> Response:
+    """Обработчик для регистрации партнера.
+
+    Создает запись о магазине с принадлежностью к пользователю
+    и отправляет письмо с токеном и партнерским соглашением на почту
+    для завершения регистрации партнера.
+    """
     data = request.data
 
     if request.user.is_shop:
@@ -952,6 +1050,10 @@ def register_partner(request) -> Response:
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def register_partner_confirm(request) -> Response:
+    """Обработчик завершения регистрации партнера.
+
+    Проверяет переданный токен и устанавливает флаг is_shop для пользователя в True.
+    """
     data = request.data
 
     if request.user.is_shop:
@@ -1022,10 +1124,23 @@ def register_partner_confirm(request) -> Response:
 
 
 class PartnerStateAPIView(APIView):
+    """Представление для статуса партнера."""
+
     permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request, internal=False) -> Response | Shop:
+        """Получение статуса партнера.
+
+        Поддерживает использование в других методах представления.
+
+        Args:
+            internal: флаг для получения объекта магазина
+
+        Returns:
+            Response: ответ со статусом партнера
+            Shop: объект магазина
+        """
         if not request.user.is_shop:
             return Response(
                 {"error": "You are not our partner"},
@@ -1049,6 +1164,8 @@ class PartnerStateAPIView(APIView):
             )
 
     def patch(self, request) -> Response:
+        """Изменение статуса партнера."""
+
         data = request.data
         status = data.get("status")
         shop = PartnerStateAPIView.get(self, request, internal=True)
@@ -1084,17 +1201,23 @@ class PartnerStateAPIView(APIView):
 
 
 class PartnerOrdersAPIView(APIView):
+    """Представление для получения заказов партнером."""
+
     permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request) -> Response:
+        """Получение заказов партнера.
+
+        Возвращает подробную информацию о заказах.
+        """
         shop = PartnerStateAPIView.get(self, request, internal=True)
         if isinstance(shop, Response):
             return shop
 
         order_items = (OrderItem.objects
                        .filter(shop=shop)
-                       .exclude(order__status="NOT_CREATED")
+                       .exclude(order__status="NOT_CREATED")  # Исключаются заказы являющиеся корзиной пользователя
                        .order_by('-order__status')
                        .all())
 
@@ -1112,6 +1235,8 @@ class PartnerOrdersAPIView(APIView):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def data_import(request) -> Response:
+    """Обработчик обновления прайса партнера."""
+
     # Проверка является ли пользователь магазином/партнером
     if not request.user.is_shop:
         return Response(
@@ -1137,7 +1262,7 @@ def data_import(request) -> Response:
             status=400
         )
 
-    # Попытка получить данные
+    # Попытка получить данные из url
     try:
         for _ in range(3):
             response = requests.get(url)
@@ -1172,6 +1297,7 @@ def data_import(request) -> Response:
         )
 
     user_id = request.user.id
+    # Проверка по объёму данных на необходимость передачи задачи в Celery
     if len(yaml_data) > 10000:
         task_celery = update_partner_price.delay(user_id, dict_data, for_celery=True)
         return Response(
@@ -1190,6 +1316,10 @@ def data_import(request) -> Response:
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def data_import_result(request, task_id: str) -> Response:
+    """Обработчик получения результата обновления прайса партнера.
+
+    Для тех случаев, когда обработка данных была передана Celery.
+    """
     task_celery = AsyncResult(task_id)
     if task_celery.status in ["SUCCESS", "FAILURE"]:
         return Response(task_celery.result)
