@@ -104,6 +104,7 @@ class UserSerializer(serializers.Serializer):
         """Валидация пароля с помощью функции django."""
 
         validate_password(value)
+        return value
 
     def create(self, validated_data):
         """Создание пользователя с хэшированием пароля."""
