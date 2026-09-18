@@ -4,6 +4,11 @@ from django.utils import timezone
 
 
 class UserManager(BaseUserManager):
+    """
+    Пользовательский класс-менеджер для модели User.
+    Определены методы создания обычного пользователя и администратора.
+    Использование username заменено на email.
+    """
     def create_user(self, email, password, **extra_fields):
         if not email:
             raise ValueError("Email is required")
@@ -26,6 +31,28 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractUser):
+    """Кастомная модель для пользователя.
+
+    Аутентификация заменена на использование email вместо username.
+    При создании суперпользователя обязательными полями назначены:
+        email, first_name, last_name и password.
+
+    Attributes:
+        first_name: имя пользователя
+        last_name: фамилия
+        email: электронная почта
+        patronymic: отчество
+        registration_token: токен регистрации для подтверждения
+        is_shop: является ли пользователь магазином
+        is_confirm: подтвержден ли пользователь по email
+        is_active: активен ли профиль пользователя
+        is_staff: является ли пользователь сотрудником
+        is_superuser: является ли суперпользователем
+
+    Notes:
+        Поле username удалено и в качестве указания имени используется firs_name.
+        Поле password не объявляется, но присутствует в модели.
+    """
     first_name = models.CharField(
         max_length=150,
         verbose_name="имя"
@@ -91,6 +118,19 @@ class User(AbstractUser):
 
 
 class Shop(models.Model):
+    """Модель магазина.
+
+    Определяет магазин с принадлежностью к пользователю.
+
+    Attributes:
+        user: связь с пользователем
+        name: наименование
+        url: ссылка
+        status: статус приёма заказов
+
+    Note:
+        В STATUS_CHOICES доступные статусы для магазина.
+    """
     STATUS_CHOICES = (
         ("ACCEPT_ORDERS", "принимаю заказы"),
         ("NOT_ACCEPT_ORDERS", "не принимаю заказы")
@@ -129,6 +169,15 @@ class Shop(models.Model):
 
 
 class Category(models.Model):
+    """Модель категории.
+
+    Определяет категорию с принадлежностью к магазину.
+    Связана с магазином через промежуточную модель ShopCategory.
+
+    Attributes:
+        name: название
+        shops: связь с магазинами
+    """
     name = models.CharField(
         max_length=175,
         unique=True,
@@ -150,6 +199,14 @@ class Category(models.Model):
 
 
 class ShopCategory(models.Model):
+    """Связующая модель Магазин-Категория.
+
+    Обеспечивает явную связь многие-ко-многим.
+
+    Attributes:
+        shop: связь с магазином
+        category: связь с категорией
+    """
     shop = models.ForeignKey(
         Shop,
         on_delete=models.CASCADE,
@@ -170,6 +227,14 @@ class ShopCategory(models.Model):
 
 
 class Product(models.Model):
+    """Модель товара.
+
+    Определяет товар с принадлежностью к категории.
+
+    Attributes:
+        name: название
+        category: связь с категорией
+    """
     name = models.CharField(
         max_length=175,
         verbose_name="название"
@@ -190,6 +255,19 @@ class Product(models.Model):
 
 
 class ProductInfo(models.Model):
+    """Модель информации о товаре.
+
+    Определяет расширенную информацию о товаре в магазине.
+
+    Attributes:
+        product: связь с товаром
+        shop: связь с магазином
+        model: модель
+        name: название
+        quantity: количество единиц
+        price: стоимость
+        price_rrc: розничная стоимость
+    """
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
@@ -236,6 +314,13 @@ class ProductInfo(models.Model):
 
 
 class Parameter(models.Model):
+    """Модель параметра товаров.
+
+    Определяет наименование параметра.
+
+    Attributes:
+        name: наименование
+    """
     name = models.CharField(
         max_length=255,
         verbose_name="именование"
@@ -251,6 +336,15 @@ class Parameter(models.Model):
 
 
 class ProductParameter(models.Model):
+    """Модель значения параметра для товара.
+
+    Связывает информацию о товаре с параметром и хранит значение.
+
+    Attributes:
+        product_info: связь с информацией о товаре
+        parameter: связь с параметром
+        value: значение
+    """
     product_info = models.ForeignKey(
         ProductInfo,
         on_delete=models.CASCADE,
@@ -276,6 +370,18 @@ class ProductParameter(models.Model):
 
 
 class Order(models.Model):
+    """Модель заказа.
+
+    Заказ со статусом NOT_CREATED является корзиной пользователя.
+
+    Attributes:
+        user: пользователь
+        created_at: дата создания
+        status: статус
+
+    Note:
+        STATUS_CHOICES определяет доступные статусы.
+    """
     STATUS_CHOICES = (
         ("NOT_CREATED", "не создан"),
         ("PROCESSING", "в обработке"),
@@ -319,6 +425,16 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
+    """Модель содержимого заказа/корзины.
+
+    Обеспечивает указание товаров в заказе/корзине и их количество.
+
+    Attributes:
+        order: связь с заказом
+        product_info: связь с информацией о товаре
+        shop: связь с магазином
+        quantity: количество единиц товара
+    """
     order = models.ForeignKey(
         Order,
         on_delete=models.CASCADE,
@@ -348,6 +464,21 @@ class OrderItem(models.Model):
 
 
 class Contact(models.Model):
+    """Модель контактов пользователя.
+
+    Определяет контакты пользователя для оформления заказа.
+
+    Attributes:
+        user: связь с пользователем
+        telephone: номер телефона
+        settlement: поселение
+        street: улица
+        house: дом
+        structure: строение
+        building: корпус
+        flat: квартира
+        comment: комментарий
+    """
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
