@@ -6,6 +6,10 @@ from .serializers import CustomAuthTokenSerializer
 
 
 class CustomAuthToken(ObtainAuthToken):
+    """Кастомный класс для создания токена.
+
+    Использует сериализатор проводящий аутентификацию по email и password.
+    """
     serializer_class = CustomAuthTokenSerializer
 
     def post(self, request, *args, **kwargs) -> Response:
