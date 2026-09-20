@@ -76,13 +76,15 @@ def update_partner_price(
         product_info_obj = product_info_obj.first()
         if product_info_obj.name != name:
             return True
-        elif product_info_obj.model != model:
+        if model != "__не_передана__":
+            if product_info_obj.model != model:
+                return True
+        if float(product_info_obj.price) != float(price):
             return True
-        elif product_info_obj.price != price:
-            return True
-        elif product_info_obj.price_rrc != price_rrc:
-            return True
-        elif product_info_obj.quantity != quantity:
+        if price_rrc != "__не_передана__":
+            if float(product_info_obj.price_rrc) != float(price_rrc):
+                return True
+        if product_info_obj.quantity != quantity:
             return True
         else:
             return False
@@ -214,8 +216,8 @@ def update_partner_price(
                                 raise AssertionError(f"Information about your product with id={id} does not exist"
                                                      f" - updating product information will not work")
 
-                        model = good.get("model")
-                        if model:
+                        model = good.get("model", "__не_передана__")
+                        if model != "__не_передана__":
                             if not isinstance(model, str):
                                 raise AssertionError("The model attribute must be a string")
 
@@ -245,8 +247,8 @@ def update_partner_price(
                             if price < 0:
                                 raise AssertionError("The price attribute must be a positive number")
 
-                        price_rrc = good.get("price_rrc")
-                        if price_rrc:
+                        price_rrc = good.get("price_rrc", "__не_передана__")
+                        if price_rrc != "__не_передана__":
                             if not isinstance(price_rrc, int | float):
                                 raise AssertionError("The price_rrc attribute must be a number")
                             if price_rrc < 0:
