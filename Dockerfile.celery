@@ -1,0 +1,11 @@
+FROM python:3.13
+
+WORKDIR /purchasing_service
+
+COPY requirements-dev.txt .
+
+RUN pip install -r requirements-dev.txt
+
+COPY . .
+
+WORKDIR /purchasing_service/purchasing_service
