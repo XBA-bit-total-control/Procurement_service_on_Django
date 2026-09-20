@@ -26,13 +26,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY=os.getenv("SECRET_KEY")
+SECRET_KEY=os.getenv("SECRET_KEY", "django-insecure-example-for-start-in-container")
 if SECRET_KEY is None:
     raise ImproperlyConfigured("SECRET_KEY is required. "
                                "Fill in its value in the environment variables (.env file)")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG=os.getenv("DEBUG", "false").lower() == "true"
+DEBUG=os.getenv("DEBUG", "true").lower() == "true"
 
 
 ALLOWED_HOSTS=os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
@@ -89,12 +89,12 @@ WSGI_APPLICATION = 'purchasing_service.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': os.getenv("DB_ENGINE"),
-        'NAME': os.getenv("DB_NAME"),
-        'HOST': os.getenv("DB_HOST"),
-        'PORT': os.getenv("DB_PORT"),
-        'USER': os.getenv("DB_USER"),
-        'PASSWORD': os.getenv("DB_PASSWORD")
+        'ENGINE': os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
+        'NAME': os.getenv("DB_NAME", "data_base"),
+        'HOST': os.getenv("DB_HOST", "postgres"),
+        'PORT': os.getenv("DB_PORT", "5432"),
+        'USER': os.getenv("DB_USER", "postgres"),
+        'PASSWORD': os.getenv("DB_PASSWORD", "postgres")
     }
 }
 
@@ -164,11 +164,11 @@ PARTNERSHIP_AGREEMENT = os.getenv("PARTNERSHIP_AGREEMENT", "https://disk.yandex.
 
 # Variables for working with email
 
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "example_email@gmail.com")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "special_app_password")
 
-EMAIL_HOST = os.getenv("EMAIL_HOST")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT"))
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.service.ru")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
 EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() == "true"
@@ -176,13 +176,13 @@ if all([EMAIL_USE_TLS, EMAIL_USE_SSL]):
     raise ValueError("Only one email encryption protocol can be used at a time")
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-EMAIL_BACKEND = f"django.core.mail.backends.{os.getenv("EMAIL_BACKEND", "smtp")}.EmailBackend"
+EMAIL_BACKEND = f"django.core.mail.backends.{os.getenv("EMAIL_BACKEND", "console")}.EmailBackend"
 
 
 # Variables for Celery
 
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/1")
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
