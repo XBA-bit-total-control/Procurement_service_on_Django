@@ -1322,8 +1322,14 @@ def data_import_result(request, task_id: str) -> Response:
     Для тех случаев, когда обработка данных была передана Celery.
     """
     task_celery = AsyncResult(task_id)
-    if task_celery.status in ["SUCCESS", "FAILURE"]:
+    if task_celery.status == "SUCCESS":
         return Response(task_celery.result)
+    elif task_celery.status == "FAILURE":
+        return Response(
+            {"error": f"Internal server error. "
+                      f"If this happens again, please contact the administrator {get_random_superuser().email}"},
+            status=500
+        )
     else:
         return Response(
             {"msg": f"Processing data in the {task_celery.status} status"}
