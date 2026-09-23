@@ -1299,7 +1299,7 @@ def data_import(request) -> Response:
 
     user_id = request.user.id
     # Проверка по объёму данных на необходимость передачи задачи в Celery
-    if len(yaml_data) > 10000:
+    if len(dict_data.get("goods", [])) > 100:
         task_celery = update_partner_price.delay(user_id, dict_data, for_celery=True)
         return Response(
             {
