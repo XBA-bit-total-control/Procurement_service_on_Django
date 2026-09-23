@@ -1007,12 +1007,25 @@ def register_partner(request) -> Response:
         items = data.get("items")
         if isinstance(items, str):
             py_items = json.loads(items)
-            if len(py_items) > 1:
+            if isinstance(py_items, list):
+                if len(py_items) > 1:
+                    return Response(
+                        {"error": "There are too many values in the request body"},
+                        status=400
+                    )
+                if not isinstance(py_items[0], dict):
+                    return Response(
+                        {"error": "Invalid request body"},
+                        status=400
+                    )
+                serializer = ShopSerializer(data=py_items[0])
+            elif isinstance(py_items, dict):
+                serializer = ShopSerializer(data=py_items)
+            else:
                 return Response(
-                    {"error": "There are too many values in the request body"},
+                {"error": "Invalid request body"},
                     status=400
                 )
-            serializer = ShopSerializer(data=py_items)
         else:
             serializer = ShopSerializer(data=data)
     else:
