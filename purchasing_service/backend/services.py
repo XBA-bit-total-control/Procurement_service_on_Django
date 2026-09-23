@@ -2,49 +2,42 @@ from .models import User
 from random import choice
 
 
-def get_random_admin() -> User:
-    """Функция для получения случайного сотрудника.
+def get_email_random_admin() -> str:
+    """Функция для получения электронной почты получения случайного сотрудника.
 
     Returns:
-        User: Случайный сотрудник.
-
-    Raises:
-        AssertionError: Если нет ни одного сотрудника.
+        str: Почта случайного сотрудника или пустая строка.
     """
     try:
         admins = User.objects.filter(is_staff=True).all()
-        return choice(admins)
+        return choice(admins).email
     except IndexError:
-        raise AssertionError("The project cannot work without at least one staff")
+        print("WARNING: THERE IS NO EMPLOYEE IN THE DATABASE - CREATE AT LEAST ONE")
+        return ""
 
 
-def get_random_activ_admin() -> User:
-    """Функция для получения случайного активного сотрудника.
+def get_email_random_activ_admin() -> str:
+    """Функция для получения электронной почты случайного активного сотрудника.
 
     Returns:
-        User: Случайный активный сотрудник.
-
-    Raises:
-        AssertionError: Если нет ни одного сотрудника.
+        str: Почта случайного активного сотрудника или пустая строка.
     """
     try:
         admins = User.objects.filter(is_staff=True, is_active=True).all()
-        return choice(admins)
+        return choice(admins).email
     except IndexError:
-        return get_random_admin()
+        return get_email_random_admin()
 
 
-def get_random_superuser() -> User:
-    """Функция для получения случайного администратора.
+def get_email_random_superuser() -> str:
+    """Функция для получения электронной почты случайного администратора.
 
     Returns:
-        User: Случайный администратор.
-
-    Raises:
-        AssertionError: Если нет ни одного администратора.
+        str: Почта случайного администратора или пустая строка.
     """
     try:
         superusers = User.objects.filter(is_superuser=True).all()
-        return choice(superusers)
+        return choice(superusers).email
     except IndexError:
-        raise AssertionError("The project cannot work without at least one administrator")
+        print("WARNING: THERE IS NO ADMINISTRATOR IN THE DATABASE - CREATE AT LEAST ONE")
+        return ""
