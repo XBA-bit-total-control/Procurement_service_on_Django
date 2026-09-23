@@ -675,7 +675,7 @@ class ContactAPIView(APIView):
         contacts = Contact.objects.filter(user=request.user).all()
         if not bool(contacts):
             return Response({"msg": "You haven’t provided your contact information yet"})
-        serializer = PutContactSerializer(contacts, many=True)
+        serializer = ContactSerializer(contacts, many=True)
 
         return Response(serializer.data)
 
@@ -695,6 +695,7 @@ class ContactAPIView(APIView):
                 status=400
             )
         serializer.validated_data["user_id"] = request.user.id
+        serializer.validated_data.pop("id", None)
         Contact.objects.create(**serializer.validated_data)
 
         return Response(
