@@ -301,7 +301,7 @@ class ShopListView(GenericAPIView, ListModelMixin):
     queryset = Shop.objects.all()
     serializer_class = ShopSerializer
     pagination_class = PageNumberPagination
-    pagination_class.page_size = 12
+    pagination_class.page_size = 20
 
     def get(self, request):
         return self.list(request)
@@ -318,7 +318,6 @@ class CategoriesListView(GenericAPIView, ListModelMixin):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     pagination_class = PageNumberPagination
-    pagination_class.page_size = 20
 
     def get(self, request):
         return self.list(request)
@@ -335,7 +334,6 @@ class ProductListView(GenericAPIView, ListModelMixin):
     queryset = ProductInfo.objects.all()
     serializer_class = ProductInfoSerializer
     pagination_class = PageNumberPagination
-    pagination_class.page_size = 20
 
     def get(self, request):
         return self.list(request)
