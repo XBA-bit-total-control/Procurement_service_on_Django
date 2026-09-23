@@ -1257,9 +1257,9 @@ class PartnerStateAPIView(APIView):
                 {"error": "The status value is a string"},
                 status=400
             )
-        if status == "принимаю":
+        if status in ["принимаю", "ACCEPT_ORDERS"]:
             shop.status = "ACCEPT_ORDERS"
-        elif status == "не принимаю":
+        elif status in ["не принимаю", "NOT_ACCEPT_ORDERS"]:
             shop.status = "NOT_ACCEPT_ORDERS"
         else:
             return Response(
