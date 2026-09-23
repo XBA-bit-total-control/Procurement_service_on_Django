@@ -995,6 +995,19 @@ def register_partner(request) -> Response:
         )
     serializer.is_valid(raise_exception=True)
 
+    if Shop.objects.filter(name=serializer.validated_data["name"]).exists():
+        return Response(
+            {"error": "A shop with that name already exists"},
+            status=400
+        )
+    if serializer.validated_data["url"] is not None:
+        if Shop.objects.filter(url=serializer.validated_data["url"]).exists():
+            return Response(
+                {"error": "A shop with that url already exists"},
+                status=400
+            )
+    serializer.validated_data.pop("id", None)
+
     try:
         with transaction.atomic():
             Shop.objects.create(
