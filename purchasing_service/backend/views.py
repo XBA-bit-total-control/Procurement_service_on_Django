@@ -22,6 +22,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from yaml.constructor import ConstructorError
 from yaml.parser import ParserError
 
 from .data.body_of_letters import (completing_registration, order_created_for_user,
@@ -1373,6 +1374,11 @@ def data_import(request) -> Response:
     except ParserError:
         return Response(
             {"error": "Invalid data format in a YAML file"},
+            status=400
+        )
+    except ConstructorError:
+        return Response(
+            {"error": "Unsupported constructor tag used"},
             status=400
         )
 
