@@ -2,7 +2,8 @@ from django.contrib import admin
 
 from .models import (Shop, ShopCategory, Category, Product,
                      ProductInfo, Parameter, ProductParameter,
-                     Order, OrderItem, Contact, User)
+                     Order, OrderItem, Contact, User,
+                     ConfirmationTokens)
 
 
 @admin.register(User)
@@ -10,7 +11,7 @@ class UserAdmin(admin.ModelAdmin):
     """Представление модели User в админке."""
 
     list_display = ["id", "first_name", "last_name", "patronymic",
-                    "email", "registration_token", "is_active", "is_shop",
+                    "email", "is_active", "is_shop",
                     "is_confirm", "is_staff", "is_superuser"]
     list_filter = ["id", "first_name", "last_name", "patronymic",
                    "email", "is_active", "is_shop",
@@ -133,4 +134,14 @@ class ContactAdmin(admin.ModelAdmin):
                    "house", "structure", "building", "flat"]
     search_fields = ["id", "telephone", "settlement", "street",
                      "house", "structure", "building", "flat", "comment"]
+    ordering = ["id"]
+
+
+@admin.register(ConfirmationTokens)
+class ConfirmationTokensAdmin(admin.ModelAdmin):
+    """Представление модели ConfirmationTokens в админке."""
+
+    list_display = ["id", "user", "token_for_email", "token_for_partner"]
+    list_filter = ["id", "user"]
+    search_fields = ["id", "token_for_email", "token_for_partner"]
     ordering = ["id"]
