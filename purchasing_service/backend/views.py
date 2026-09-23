@@ -69,11 +69,6 @@ def user_register(request) -> Response:
                 user=user,
                 token_for_email=secrets.token_urlsafe(12)
             )
-            send_email.delay(
-                subject="Registration on the Compraretis ad service",
-                recipient=user.email,
-                content=completing_registration(confirmation_token.token_for_email),
-            )
     except IntegrityError:
         return Response(
             {
@@ -89,6 +84,11 @@ def user_register(request) -> Response:
             status=500
         )
     else:
+        send_email.delay(
+            subject="Registration on the Compraretis ad service",
+            recipient=user.email,
+            content=completing_registration(confirmation_token.token_for_email),
+        )
         return Response(
             {
                 "status": "success",
@@ -211,11 +211,11 @@ class UserDetailsAPIView(APIView):
         serializer = PutUserSerializer(data=data)
         serializer.is_valid(raise_exception=True)
 
-        try:
-            with transaction.atomic():
-                user = User.objects.filter(id=request.user.id)
-                email = serializer.validated_data.get("email")
-                if email is not None:  # Предоставляется возможность смены email
+        user = User.objects.filter(id=request.user.id)
+        email = serializer.validated_data.get("email")
+        if email is not None:  # Предоставляется возможность смены email
+            try:
+                with transaction.atomic():
                     check_exist_email = User.objects.filter(email=email, is_confirm=True).first()
                     if check_exist_email is not None:
                         return Response(
@@ -233,18 +233,12 @@ class UserDetailsAPIView(APIView):
                         for token in tokens_for_delete:
                             token.delete()
 
-                    token_for_email = secrets.token_urlsafe(12)
                     # Профиль пользователя назначается не подтвержденным
                     serializer.validated_data["is_confirm"] = False
 
-                    # Уведомления пользователя по старому email и о его изменении
-                    send_email.delay(
-                        subject="Compraretis service: change email",
-                        recipient=request.user.email,
-                        content=change_email_for_old(get_email_random_activ_admin()),
-                    )
-
                     user.update(**serializer.validated_data)
+
+                    token_for_email = secrets.token_urlsafe(12)
                     confirmation_token, created = ConfirmationTokens.objects.get_or_create(
                         user=user.first(),
                         defaults={"token_for_email": token_for_email}
@@ -253,41 +247,55 @@ class UserDetailsAPIView(APIView):
                         confirmation_token.token_for_email = token_for_email
                         confirmation_token.save()
 
-                    # Письмо для подтверждения профиля на новый email
-                    send_email.delay(
-                        subject="Compraretis service: change email",
-                        recipient=email,
-                        content=change_email_for_now(token_for_email),
-                    )
+            except Exception:
+                return Response(
+                    {"error": f"Internal server error. "
+                              f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
+                    status=500
+                )
+            else:
+                # Уведомления пользователя по старому email и о его изменении
+                send_email.delay(
+                    subject="Compraretis service: change email",
+                    recipient=request.user.email,
+                    content=change_email_for_old(get_email_random_activ_admin()),
+                )
+                # Письмо для подтверждения профиля на новый email
+                send_email.delay(
+                    subject="Compraretis service: change email",
+                    recipient=email,
+                    content=change_email_for_now(token_for_email),
+                )
 
-                    return Response(
-                        {
-                            "status": "success",
-                            "msg": "Your email has been changed — please confirm it"
-                        }
-                    )
-                else:
-                    if len(serializer.validated_data) == 0:
-                        return Response(
-                            {"error": "No correct data was provided for change"},
-                            status=400
-                        )
-                user.update(**serializer.validated_data)
-
-                # В ответе уточняются измененные поля для понимания пользователя
                 return Response(
                     {
                         "status": "success",
-                        "msg": f"Changed: {', '.join([value for value in serializer.validated_data.keys()])}"
+                        "msg": "Your email has been changed — please confirm it"
                     }
                 )
+        else:
+            if len(serializer.validated_data) == 0:
+                return Response(
+                    {"error": "No correct data was provided for change"},
+                    status=400
+                )
+            try:
+                with transaction.atomic():
+                    user.update(**serializer.validated_data)
 
-        except Exception:
-            return Response(
-                {"error": f"Internal server error. "
-                          f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
-                status=500
-            )
+                    # В ответе уточняются измененные поля для понимания пользователя
+                    return Response(
+                        {
+                            "status": "success",
+                            "msg": f"Changed: {', '.join([value for value in serializer.validated_data.keys()])}"
+                        }
+                    )
+            except Exception:
+                return Response(
+                    {"error": f"Internal server error. "
+                              f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
+                    status=500
+                )
 
 
 class ShopListView(GenericAPIView, ListModelMixin):
@@ -940,26 +948,6 @@ class OrderAPIView(APIView):
                     user_id=request.user.id
                 )
 
-                # Отправка письма пользователю о принятии заказа в обработку
-                send_email.delay(
-                    subject="Compraretis service: Order confirmation",
-                    recipient=request.user.email,
-                    content=content_for_user
-                )
-                # Отправка письма сотруднику на проверку и подтверждение
-                admin_email = get_email_random_activ_admin()
-                if admin_email != "":
-                    send_email.delay(
-                        subject="Compraretis service: New order",
-                        recipient=admin_email,
-                        content=content_for_admin
-                    )
-
-                return Response(
-                    {"status": "success"},
-                    status=201
-                )
-
         except ValueError:
             return Response(
                 {"error": "Invalid value for the contact"},
@@ -970,6 +958,26 @@ class OrderAPIView(APIView):
                 {"error": f"Internal server error. "
                           f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
                 status=500
+            )
+        else:
+            # Отправка письма пользователю о принятии заказа в обработку
+            send_email.delay(
+                subject="Compraretis service: Order confirmation",
+                recipient=request.user.email,
+                content=content_for_user
+            )
+            # Отправка письма сотруднику на проверку и подтверждение
+            admin_email = get_email_random_activ_admin()
+            if admin_email != "":
+                send_email.delay(
+                    subject="Compraretis service: New order",
+                    recipient=admin_email,
+                    content=content_for_admin
+                )
+
+            return Response(
+                {"status": "success"},
+                status=201
             )
 
 
@@ -1068,20 +1076,6 @@ def register_partner(request) -> Response:
                 link_to_agreement=PARTNERSHIP_AGREEMENT
             )
 
-            send_email.delay(
-                subject="Compraretis service: The beginning of the partnership",
-                recipient=request.user.email,
-                content=body_email
-            )
-
-            return Response(
-                {
-                    "status": "success",
-                    "msg": "To complete the partnership agreement, please check you the email address"
-                },
-                status=201
-            )
-
     except json.decoder.JSONDecodeError:
         return Response(
             {"error": "An incorrect string value was passed "
@@ -1101,6 +1095,20 @@ def register_partner(request) -> Response:
             {"error": f"Internal server error. "
                       f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
             status=500
+        )
+    else:
+        send_email.delay(
+            subject="Compraretis service: The beginning of the partnership",
+            recipient=request.user.email,
+            content=body_email
+        )
+
+        return Response(
+            {
+                "status": "success",
+                "msg": "To complete the partnership agreement, please check you the email address"
+            },
+            status=201
         )
 
 
