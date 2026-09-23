@@ -293,6 +293,7 @@ class ContactSerializer(serializers.Serializer):
     Для всех полей кроме телефона и комментария допускается использование только букв и цифр.
 
     Attributes:
+        id: идентификатор
         telephone: номер телефона
         settlement: населенный пункт
         street: улица
@@ -306,6 +307,7 @@ class ContactSerializer(serializers.Serializer):
         Телефон валидируется и преобразуется к формату +7 999 999-99-99 доб. (2 to 5 digits).
         Добавочный номер указывается при наличии.
     """
+    id = serializers.IntegerField(required=False)
     telephone = serializers.CharField(
         min_length=11,
         max_length=70
