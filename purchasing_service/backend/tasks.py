@@ -91,7 +91,10 @@ def update_partner_price(
         if float(product_info_obj.price) != float(price):
             return True
         if price_rrc != "__не_передана__":
-            if float(product_info_obj.price_rrc) != float(price_rrc):
+            if product_info_obj.price_rrc is not None:
+                if float(product_info_obj.price_rrc) != float(price_rrc):
+                    return True
+            else:
                 return True
         if product_info_obj.quantity != quantity:
             return True
