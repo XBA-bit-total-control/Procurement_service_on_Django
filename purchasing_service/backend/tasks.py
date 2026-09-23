@@ -1,3 +1,5 @@
+from smtplib import SMTPConnectError
+
 from celery import shared_task
 from django.core.mail import send_mail as django_message
 from django.db import IntegrityError, transaction
@@ -8,7 +10,14 @@ from .models import (Category, ProductInfo, Parameter, Shop,
 from .services import get_email_random_superuser
 
 
-@shared_task
+@shared_task(
+    auto_retry_for=(ConnectionError, SMTPConnectError),
+    max_retries=3,
+    countdown=10,
+    retry_backoff=True,
+    retry_baskoff_max=420,
+    acks_late=True
+)
 def send_email(
         subject: str,
         recipient: str,
@@ -34,7 +43,7 @@ def send_email(
     return True
 
 
-@shared_task
+@shared_task(acks_late=True)
 def update_partner_price(
         user_id: int,
         dict_data: dict,
