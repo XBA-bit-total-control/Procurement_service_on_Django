@@ -27,9 +27,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY=os.getenv("SECRET_KEY", "django-insecure-example-for-start-in-container")
-if SECRET_KEY is None:
-    raise ImproperlyConfigured("SECRET_KEY is required. "
-                               "Fill in its value in the environment variables (.env file)")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG=os.getenv("DEBUG", "true").lower() == "true"
@@ -176,7 +173,7 @@ if all([EMAIL_USE_TLS, EMAIL_USE_SSL]):
     raise ValueError("Only one email encryption protocol can be used at a time")
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-EMAIL_BACKEND = f"django.core.mail.backends.{os.getenv("EMAIL_BACKEND", "console")}.EmailBackend"
+EMAIL_BACKEND = f"django.core.mail.backends.{os.getenv('EMAIL_BACKEND', 'console')}.EmailBackend"
 
 
 # Variables for Celery
