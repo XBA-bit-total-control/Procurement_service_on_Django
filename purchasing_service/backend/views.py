@@ -28,14 +28,14 @@ from .data.body_of_letters import (completing_registration, order_created_for_us
                                    order_created_for_admin, change_email_for_old,
                                    change_email_for_now, shop_registration)
 from .filters import ShopFilter, CategoryFilter, ProductInfoFilter
-from .models import (Category, ProductInfo, User,
+from .models import (Category, ProductInfo, User, ConfirmationTokens,
                      Shop, Order, OrderItem, Contact)
 from .serializers import (UserSerializer, ShopSerializer, ProductInfoSerializer,
                           PostProductInfoSerializer, OrderItemSerializer, PutOrderItemSerializer,
                           ContactSerializer, PutContactSerializer, OrderSerializer,
                           GetUserSerializer, PutUserSerializer, CategorySerializer,
                           PartnerOrderItemSerializer)
-from .services import get_random_activ_admin, get_random_superuser
+from .services import get_email_random_activ_admin, get_email_random_superuser
 from .tasks import send_email, update_partner_price
 
 
@@ -61,15 +61,18 @@ def user_register(request) -> Response:
             {"error": "User with this email already exists"},
             status=400
         )
-    serializer.validated_data["registration_token"] = secrets.token_urlsafe(12)
 
     try:
         with transaction.atomic():
             user = User.objects.create_user(**serializer.validated_data)
+            confirmation_token =  ConfirmationTokens.objects.create(
+                user=user,
+                token_for_email=secrets.token_urlsafe(12)
+            )
             send_email.delay(
                 subject="Registration on the Compraretis ad service",
                 recipient=user.email,
-                content=completing_registration(user.registration_token),
+                content=completing_registration(confirmation_token.token_for_email),
             )
     except IntegrityError:
         return Response(
@@ -82,7 +85,7 @@ def user_register(request) -> Response:
     except Exception:
         return Response(
             {"error": f"Internal server error. "
-                      f"If this happens again, please contact the administrator {get_random_superuser().email}"},
+                      f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
             status=500
         )
     else:
@@ -141,17 +144,33 @@ def user_register_confirm(request) -> Response:
             status=400
         )
 
-    if token != user.registration_token:
+    confirmation_token = ConfirmationTokens.objects.filter(user=user).first()
+    if confirmation_token is None:
+        return Response(
+            {"error": "No confirmation token has been created for you. "
+                      "Please register again."},
+            status=400
+        )
+    else:
+        if confirmation_token.token_for_email is None:
+            return Response(
+                {"error": "No confirmation token has been created for you. "
+                          "Please register again."},
+                status=400
+            )
+
+    if token != confirmation_token.token_for_email:
         return Response(
             {"error": "Invalid token"},
             status=400
         )
 
     user.is_confirm = True
-    user.registration_token = None
+    confirmation_token.token_for_email = None
     try:
         with transaction.atomic():
             user.save()
+            confirmation_token.save()
     except IntegrityError:
         return Response(
             {
@@ -163,7 +182,7 @@ def user_register_confirm(request) -> Response:
     except Exception:
         return Response(
             {"error": f"Internal server error. "
-                      f"If this happens again, please contact the administrator {get_random_superuser().email}"},
+                      f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
             status=500
         )
     else:
@@ -214,25 +233,31 @@ class UserDetailsAPIView(APIView):
                         for token in tokens_for_delete:
                             token.delete()
 
-                    registration_token = secrets.token_urlsafe(12)
+                    token_for_email = secrets.token_urlsafe(12)
                     # Профиль пользователя назначается не подтвержденным
                     serializer.validated_data["is_confirm"] = False
-                    serializer.validated_data["registration_token"] = registration_token
 
                     # Уведомления пользователя по старому email и о его изменении
                     send_email.delay(
                         subject="Compraretis service: change email",
                         recipient=request.user.email,
-                        content=change_email_for_old(get_random_activ_admin().email),
+                        content=change_email_for_old(get_email_random_activ_admin()),
                     )
 
                     user.update(**serializer.validated_data)
+                    confirmation_token, created = ConfirmationTokens.objects.get_or_create(
+                        user=user.first(),
+                        defaults={"token_for_email": token_for_email}
+                    )
+                    if not created:
+                        confirmation_token.token_for_email = token_for_email
+                        confirmation_token.save()
 
                     # Письмо для подтверждения профиля на новый email
                     send_email.delay(
                         subject="Compraretis service: change email",
                         recipient=email,
-                        content=change_email_for_now(registration_token),
+                        content=change_email_for_now(token_for_email),
                     )
 
                     return Response(
@@ -260,7 +285,7 @@ class UserDetailsAPIView(APIView):
         except Exception:
             return Response(
                 {"error": f"Internal server error. "
-                          f"If this happens again, please contact the administrator {get_random_superuser().email}"},
+                          f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
                 status=500
             )
 
@@ -493,7 +518,7 @@ class BasketAPIView(APIView):
         except Exception:
             return Response(
                 {"error": f"Internal server error. "
-                          f"If this happens again, please contact the administrator {get_random_superuser().email}"},
+                          f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
                 status=500
             )
 
@@ -583,7 +608,7 @@ class BasketAPIView(APIView):
         except Exception:
             return Response(
                 {"error": f"Internal server error. "
-                          f"If this happens again, please contact the administrator {get_random_superuser().email}"},
+                          f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
                 status=500
             )
 
@@ -658,7 +683,7 @@ class BasketAPIView(APIView):
         except Exception:
             return Response(
                 {"error": f"Internal server error. "
-                          f"If this happens again, please contact the administrator {get_random_superuser().email}"},
+                          f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
                 status=500
             )
 
@@ -808,7 +833,7 @@ class ContactAPIView(APIView):
         except Exception:
             return Response(
                 {"error": f"Internal server error. "
-                          f"If this happens again, please contact the administrator {get_random_superuser().email}"},
+                          f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
                 status=500
             )
 
@@ -924,11 +949,13 @@ class OrderAPIView(APIView):
                     content=content_for_user
                 )
                 # Отправка письма сотруднику на проверку и подтверждение
-                send_email.delay(
-                    subject="Compraretis service: New order",
-                    recipient=get_random_activ_admin().email,
-                    content=content_for_admin
-                )
+                admin_email = get_email_random_activ_admin()
+                if admin_email != "":
+                    send_email.delay(
+                        subject="Compraretis service: New order",
+                        recipient=admin_email,
+                        content=content_for_admin
+                    )
 
                 return Response(
                     {"status": "success"},
@@ -943,7 +970,7 @@ class OrderAPIView(APIView):
         except Exception:
             return Response(
                 {"error": f"Internal server error. "
-                          f"If this happens again, please contact the administrator {get_random_superuser().email}"},
+                          f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
                 status=500
             )
 
@@ -1014,13 +1041,19 @@ def register_partner(request) -> Response:
                 **serializer.validated_data,
                 user=request.user
             )
-            registration_token = secrets.token_urlsafe(12)
-            request.user.registration_token = registration_token
-            request.user.save()
+
+            token_for_partner = secrets.token_urlsafe(12)
+            confirmation_token, created = ConfirmationTokens.objects.get_or_create(
+                user=request.user,
+                defaults={"token_for_partner": token_for_partner}
+            )
+            if not created:
+                confirmation_token.token_for_partner = token_for_partner
+                confirmation_token.save()
 
             body_email = shop_registration(
                 first_name=request.user.first_name,
-                token=registration_token,
+                token=token_for_partner,
                 link_to_agreement=PARTNERSHIP_AGREEMENT
             )
 
@@ -1055,7 +1088,7 @@ def register_partner(request) -> Response:
     except Exception:
         return Response(
             {"error": f"Internal server error. "
-                      f"If this happens again, please contact the administrator {get_random_superuser().email}"},
+                      f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
             status=500
         )
 
@@ -1097,11 +1130,23 @@ def register_partner_confirm(request) -> Response:
             {"error": "Incorrect token format"},
             status=400
         )
-    if request.user.registration_token is None:
+
+    confirmation_token = ConfirmationTokens.objects.filter(user=request.user).first()
+    if confirmation_token is None:
         return Response(
-            {"msg": "Complete the first stage of store registration"}
+            {"error": f"No confirmation token has been created for you. "
+                      "Please go through the partner registration procedure again"},
+            status=400
         )
-    if token != request.user.registration_token:
+    else:
+        if confirmation_token.token_for_partner is None:
+            return Response(
+                {"error": f"No confirmation token has been created for you. "
+                          "Please go through the partner registration procedure again"},
+                status=400
+            )
+
+    if token != confirmation_token.token_for_partner:
         return Response(
             {"error": "Invalid token"},
             status=400
@@ -1110,8 +1155,10 @@ def register_partner_confirm(request) -> Response:
     try:
         with transaction.atomic():
             request.user.is_shop = True
-            request.user.registration_token = None
             request.user.save()
+
+            confirmation_token.token_for_partner = None
+            confirmation_token.save()
 
             return Response(
                 {
@@ -1132,7 +1179,7 @@ def register_partner_confirm(request) -> Response:
     except Exception:
         return Response(
             {"error": f"Internal server error. "
-                      f"If this happens again, please contact the administrator {get_random_superuser().email}"},
+                      f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
             status=500
         )
 
@@ -1340,7 +1387,7 @@ def data_import_result(request, task_id: str) -> Response:
     elif task_celery.status == "FAILURE":
         return Response(
             {"error": f"Internal server error. "
-                      f"If this happens again, please contact the administrator {get_random_superuser().email}"},
+                      f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
             status=500
         )
     else:

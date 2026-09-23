@@ -5,7 +5,7 @@ from rest_framework.response import Response
 
 from .models import (Category, ProductInfo, Parameter, Shop,
                      ProductParameter, ShopCategory, Product)
-from .services import get_random_superuser
+from .services import get_email_random_superuser
 
 
 @shared_task
@@ -389,7 +389,7 @@ def update_partner_price(
         except Exception:
             return Response(
                 {"error": f"Internal server error during data processing. "
-                          f"If this happens again, please contact the administrator {get_random_superuser().email}"},
+                          f"If this happens again, please contact the administrator {get_email_random_superuser}"},
                 status=500
             )
 
