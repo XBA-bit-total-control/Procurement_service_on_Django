@@ -42,7 +42,6 @@ class User(AbstractUser):
         last_name: фамилия
         email: электронная почта
         patronymic: отчество
-        registration_token: токен регистрации для подтверждения
         is_shop: является ли пользователь магазином
         is_confirm: подтвержден ли пользователь по email
         is_active: активен ли профиль пользователя
@@ -72,12 +71,6 @@ class User(AbstractUser):
         null=True,
         blank=True,
         verbose_name="отчество"
-    )
-    registration_token = models.CharField(
-        max_length=20,
-        null=True,
-        blank=True,
-        verbose_name="токен регистрации"
     )
     is_shop = models.BooleanField(
         default=False,
@@ -532,3 +525,33 @@ class Contact(models.Model):
 
     def __str__(self):
         return f"№ {self.id}"
+
+
+class ConfirmationTokens(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name="пользователь"
+    )
+    token_for_email = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        default=None,
+        verbose_name="токен регистрации"
+    )
+    token_for_partner = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        default=None,
+        verbose_name="токен партнёрства"
+    )
+
+    class Meta:
+        verbose_name = "Токен подтверждения"
+        verbose_name_plural = "Токены подтверждения"
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.id}"
