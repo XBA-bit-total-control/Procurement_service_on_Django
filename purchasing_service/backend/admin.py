@@ -76,9 +76,11 @@ class ProductInfoAdmin(admin.ModelAdmin):
     """Представление модели ProductInfo в админке."""
 
     list_display = ["id", "product", "shop", "name",
-                    "quantity", "price", "price_rrc"]
+                    "quantity", "price", "price_rrc",
+                    "is_deleted"]
     list_filter = ["id", "product", "shop", "name",
-                   "quantity", "price", "price_rrc"]
+                   "quantity", "price", "price_rrc",
+                   "is_deleted"]
     search_fields = ["id", "name", "quantity",
                      "price", "price_rrc"]
     ordering = ["id"]

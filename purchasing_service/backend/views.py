@@ -340,7 +340,7 @@ class ProductListView(GenericAPIView, ListModelMixin):
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_class = ProductInfoFilter
     search_fields = ["name"]
-    queryset = ProductInfo.objects.all()
+    queryset = ProductInfo.objects.exclude(is_deleted=True).all()
     serializer_class = ProductInfoSerializer
     pagination_class = PageNumberPagination
 
@@ -356,6 +356,11 @@ def get_one_product(request, id) -> Response:
     if product is None:
         return Response(
             {"error": "Product not found"},
+            status=404
+        )
+    if product.is_deleted:
+        return Response(
+            {"error": "Product is deleted"},
             status=404
         )
     serializer = ProductInfoSerializer(product)
@@ -428,6 +433,8 @@ class BasketAPIView(APIView):
             product_info = ProductInfo.objects.filter(id=product_info_id).first()
             if product_info is None:
                 raise AssertionError(f"Product with id={product_info_id} not found")
+            if product_info.is_deleted:
+                raise AssertionError(f"Product with id={product_info_id} not exists or deleted")
 
             check_exist_order_item = OrderItem.objects.filter(
                 product_info_id=product_info.id,

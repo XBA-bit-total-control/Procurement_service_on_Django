@@ -260,6 +260,7 @@ class ProductInfo(models.Model):
         quantity: количество единиц
         price: стоимость
         price_rrc: розничная стоимость
+        is_deleted: удалена ли информация
     """
     product = models.ForeignKey(
         Product,
@@ -295,12 +296,17 @@ class ProductInfo(models.Model):
         blank=True,
         verbose_name="РРЦ"
     )
+    is_deleted = models.BooleanField(
+        default=False,
+        blank=True,
+        verbose_name="удалён"
+    )
 
     class Meta:
         verbose_name = "Информация о товаре"
         verbose_name_plural = "Информация о товарах"
         ordering = ["id", "name", "quantity", "price",
-                    "price_rrc", "shop", "product"]
+                    "price_rrc", "shop", "product", "is_deleted"]
 
     def __str__(self):
         return self.name

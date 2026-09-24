@@ -6,7 +6,7 @@ from django.db import IntegrityError, transaction
 from rest_framework.response import Response
 
 from .models import (Category, ProductInfo, Parameter, Shop,
-                     ProductParameter, ShopCategory, Product)
+                     ProductParameter, ShopCategory, Product, OrderItem)
 from .services import get_email_random_superuser
 
 
@@ -277,6 +277,10 @@ def update_partner_price(
                             elif quantity is not None:
                                 raise AssertionError("The quantity attribute must be a number")
 
+                        is_deleted = good.pop("is_deleted", None)  # Устранение попытки установить статус удаленного товара вручную
+                        if is_deleted is not None:
+                            raise AssertionError("You cannot manually set the order's is_deleted status")
+
                         if isinstance(category, int):
                             category_obj = Category.objects.filter(id=category).first()
                         else:
@@ -287,9 +291,26 @@ def update_partner_price(
 
                         if id:
                             if quantity is None:  # Удаление информации о товаре
-                                product_info_obj.delete()
-                                response_report.data["deleted_product_information"] += 1  # Отчетность
-                                continue
+                                check_orders_with_product = OrderItem.objects.filter(
+                                    product_info=product_info_obj.first(),
+                                ).exclude(
+                                    order__status="NOT_CREATED"
+                                ).exists()
+                                if check_orders_with_product:  #  Если товар заказывали - он помечается как удалённый
+                                    order_items = OrderItem.objects.filter(
+                                        product_info=product_info_obj.first(),
+                                        order__status="NOT_CREATED"
+                                    ).all()
+                                    if order_items:  # Удаление товара из корзин пользователей
+                                        for order_item in order_items:
+                                            order_item.delete()
+                                    product_info_obj.update(is_deleted=True)
+                                    response_report.data["deleted_product_information"] += 1  # Отчетность
+                                    continue
+                                else:  # Если товар не заказывали - он полностью удаляется
+                                    product_info_obj.delete()
+                                    response_report.data["deleted_product_information"] += 1  # Отчетность
+                                    continue
                             else:  # Обновление информации о товаре, при наличии изменений
                                 if check_changes_in_product_info(product_info_obj, name, model,
                                                                  price, price_rrc, quantity):
@@ -401,7 +422,7 @@ def update_partner_price(
         except Exception:
             return Response(
                 {"error": f"Internal server error during data processing. "
-                          f"If this happens again, please contact the administrator {get_email_random_superuser}"},
+                          f"If this happens again, please contact the administrator {get_email_random_superuser()}"},
                 status=500
             )
 
