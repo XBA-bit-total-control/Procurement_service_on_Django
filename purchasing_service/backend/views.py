@@ -213,19 +213,15 @@ class UserDetailsAPIView(APIView):
 
         user = User.objects.filter(id=request.user.id)
         email = serializer.validated_data.get("email")
-        if email is not None:  # Предоставляется возможность смены email
+        if email is not None:  # Предоставляется возможность смены email, если новый не занят
             try:
                 with transaction.atomic():
-                    check_exist_email = User.objects.filter(email=email, is_confirm=True).first()
+                    check_exist_email = User.objects.filter(email=email).first()
                     if check_exist_email is not None:
                         return Response(
                             {"error": "This email is already registered"},
                             status=400
                         )
-                    else:
-                        check_unconfirm_email = User.objects.filter(email=email, is_confirm=False).first()
-                        if check_unconfirm_email is not None:
-                            check_unconfirm_email.delete()
 
                     # Все существующие токены пользователя удаляются
                     tokens_for_delete = Token.objects.filter(user=request.user).all()
