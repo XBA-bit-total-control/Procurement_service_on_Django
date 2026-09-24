@@ -747,15 +747,6 @@ class ContactAPIView(APIView):
                 status=400
             )
 
-        # Проверка на null значения для недопустимых полей
-        not_null_fields = ["settlement", "building", "house", "telephone"]
-        for key, value in data.items():
-            if key in not_null_fields and value is None:
-                return Response(
-                    {"error": f"The field {key} cannot be empty"},
-                    status=400
-                )
-
         serializer = PutContactSerializer(data=data)
         serializer.is_valid(raise_exception=True)
 
@@ -767,9 +758,19 @@ class ContactAPIView(APIView):
                       f"The contact data belonging to you with id={id_} is missing"},
             status=404
         )
+        if len(serializer.validated_data) == 0:
+            return Response(
+                {"error": "No data available for modification"},
+                status=400
+            )
         contacts.update(**serializer.validated_data)
 
-        return Response({"status": "success"})
+        return Response(
+            {
+                "status": "success",
+                "msg": f"Changed: {', '.join([value for value in serializer.validated_data.keys()])}"
+            }
+        )
 
     def delete(self, request) -> Response:
         """Удаление контакта."""
