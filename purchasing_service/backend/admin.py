@@ -13,7 +13,7 @@ class UserAdmin(admin.ModelAdmin):
     list_display = ["id", "first_name", "last_name", "patronymic",
                     "email", "is_active", "is_shop",
                     "is_confirm", "is_staff", "is_superuser"]
-    list_filter = ["id", "first_name", "last_name", "patronymic",
+    list_filter = ["first_name", "last_name", "patronymic",
                    "email", "is_active", "is_shop",
                    "is_confirm", "is_staff", "is_superuser"]
     search_fields = ["id", "first_name", "last_name",
@@ -45,7 +45,7 @@ class CategoryAdmin(admin.ModelAdmin):
     """Представление модели Category в админке."""
 
     list_display = ["id", "name"]
-    list_filter = ["id", "name"]
+    list_filter = ["name"]
     search_fields = ["id", "name"]
     ordering = ["id"]
     inlines = [ShopCategoryInline, ]
@@ -56,7 +56,7 @@ class ShopCategoryAdmin(admin.ModelAdmin):
     """Представление связующей модели ShopCategory в админке."""
 
     list_display = ["id", "shop", "category"]
-    list_filter = ["id", "shop", "category"]
+    list_filter = ["shop", "category"]
     search_fields = ["id"]
     ordering = ["id"]
 
@@ -66,7 +66,7 @@ class ProductAdmin(admin.ModelAdmin):
     """Представление модели Product в админке."""
 
     list_display = ["id", "name", "category"]
-    list_filter = ["id", "name", "category"]
+    list_filter = ["name", "category"]
     search_fields = ["id", "name"]
     ordering = ["id"]
 
@@ -78,7 +78,7 @@ class ProductInfoAdmin(admin.ModelAdmin):
     list_display = ["id", "product", "shop", "name",
                     "quantity", "price", "price_rrc",
                     "is_deleted"]
-    list_filter = ["id", "product", "shop", "name",
+    list_filter = ["product", "shop", "name",
                    "quantity", "price", "price_rrc",
                    "is_deleted"]
     search_fields = ["id", "name", "quantity",
@@ -91,7 +91,7 @@ class ParameterAdmin(admin.ModelAdmin):
     """Представление модели Parameter в админке."""
 
     list_display = ["id", "name"]
-    list_filter = ["id", "name"]
+    list_filter = ["name"]
     search_fields = ["id", "name"]
     ordering = ["id"]
 
@@ -101,7 +101,7 @@ class ProductParameterAdmin(admin.ModelAdmin):
     """Представление модели ProductParameter в админке."""
 
     list_display = ["id", "product_info", "parameter", "value"]
-    list_filter = ["id", "product_info", "parameter", "value"]
+    list_filter = ["product_info", "parameter", "value"]
     search_fields = ["id", "value"]
     ordering = ["id"]
 
@@ -111,7 +111,7 @@ class OrderAdmin(admin.ModelAdmin):
     """Представление модели Order в админке."""
 
     list_display = ["id", "user", "created_at", "status", "contact"]
-    list_filter = ["id", "user", "created_at", "status", "contact"]
+    list_filter = ["user", "created_at", "status", "contact"]
     search_fields = ["id", "created_at", "status"]
     ordering = ["id"]
 
@@ -121,7 +121,7 @@ class OrderItemAdmin(admin.ModelAdmin):
     """Представление модели OrderItem в админке."""
 
     list_display = ["id", "order", "product_info", "shop", "quantity"]
-    list_filter = ["id", "order", "product_info", "shop", "quantity"]
+    list_filter = ["order", "product_info", "shop", "quantity"]
     search_fields = ["id", "quantity"]
     ordering = ["id"]
 
@@ -132,7 +132,7 @@ class ContactAdmin(admin.ModelAdmin):
 
     list_display = ["id", "user", "telephone", "settlement", "street",
                     "house", "structure", "building", "flat", "comment"]
-    list_filter = ["id", "user", "telephone", "settlement", "street",
+    list_filter = ["user", "telephone", "settlement", "street",
                    "house", "structure", "building", "flat"]
     search_fields = ["id", "telephone", "settlement", "street",
                      "house", "structure", "building", "flat", "comment"]
@@ -144,6 +144,6 @@ class ConfirmationTokensAdmin(admin.ModelAdmin):
     """Представление модели ConfirmationTokens в админке."""
 
     list_display = ["id", "user", "token_for_email", "token_for_partner"]
-    list_filter = ["id", "user"]
+    list_filter = ["user"]
     search_fields = ["id", "token_for_email", "token_for_partner"]
     ordering = ["id"]
