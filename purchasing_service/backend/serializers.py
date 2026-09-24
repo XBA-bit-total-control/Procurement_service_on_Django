@@ -1,5 +1,3 @@
-import re
-
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.password_validation import validate_password
@@ -9,6 +7,7 @@ from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.serializers import ValidationError
 
 from .models import User, ProductInfo, OrderItem, Order
+from .services import validate_fio, validate_telephone_number, validate_address_values
 
 
 class UserSerializer(serializers.Serializer):
@@ -52,53 +51,19 @@ class UserSerializer(serializers.Serializer):
     )
 
     def validate_first_name(self, value):
-        """Валидатор имени пользователя.
-
-        Допускает использование только букв и подчеркивания.
-        """
-        check_special_characters = re.findall(r"\W+", value)
-        check_numbers = re.findall(r"\d+", value)
-        if check_special_characters:
-            raise ValidationError(f"The first_name field contains invalid "
-                                  f"special characters [ {' '.join(check_special_characters)} ]")
-        if check_numbers:
-            raise ValidationError(f"The first_name field must not contain numbers. "
-                                  f"Exclude [ {' '.join(check_numbers)} ]")
-        return value
+        return validate_fio(value)
 
     def validate_last_name(self, value):
-        """Валидатор фамилии пользователя.
-
-        Допускает использование только букв и подчеркивания.
-        """
         if value is None:
             return value
-        check_special_characters = re.findall(r"\W+", value)
-        check_numbers = re.findall(r"\d+", value)
-        if check_special_characters:
-            raise ValidationError(f"The last_name field contains invalid "
-                                  f"special characters [ {' '.join(check_special_characters)} ]")
-        if check_numbers:
-            raise ValidationError(f"The last_name field must not contain numbers. "
-                                  f"Exclude [ {' '.join(check_numbers)} ]")
-        return value
+        else:
+            return validate_fio(value)
 
     def validate_patronymic(self, value):
-        """Валидатор отчества пользователя.
-
-        Допускает использование только букв и подчеркивания.
-        """
         if value is None:
             return value
-        check_special_characters = re.findall(r"\W+", value)
-        check_numbers = re.findall(r"\d+", value)
-        if check_special_characters:
-            raise ValidationError(f"The patronymic field contains invalid "
-                                  f"special characters [ {' '.join(check_special_characters)} ]")
-        if check_numbers:
-            raise ValidationError(f"The patronymic field must not contain numbers. "
-                                  f"Exclude [ {' '.join(check_numbers)} ]")
-        return value
+        else:
+            return validate_fio(value)
 
     def validate_password(self, value):
         """Валидация пароля с помощью функции django."""
@@ -154,13 +119,19 @@ class PutUserSerializer(serializers.Serializer):
     email = serializers.EmailField(required=False)
 
     def validate_first_name(self, value):
-        return UserSerializer.validate_first_name(self, value)
+        return validate_fio(value)
 
     def validate_last_name(self, value):
-        return UserSerializer.validate_last_name(self, value)
+        if value is None:
+            return value
+        else:
+            return validate_fio(value)
 
     def validate_patronymic(self, value):
-        return UserSerializer.validate_patronymic(self, value)
+        if value is None:
+            return value
+        else:
+            return validate_fio(value)
 
 
 class CustomAuthTokenSerializer(AuthTokenSerializer):
@@ -350,44 +321,10 @@ class ContactSerializer(serializers.Serializer):
     )
 
     def validate_telephone(self, value):
-        """Валидатор для номера телефона.
-
-        Валидны лишь номера начинающиеся с +7 или 8.
-        """
-        pattern = r"(\+7|8)\s?[- (]?(\d{3})[- )]?\s?[- ]?(\d{3})[- ]?(\d{2})[- ]?(\d{2})\D*(\d{2,5})?"
-        check = re.findall(pattern, value)
-        error_msg = ("Incorrect telephone value. Please adhere to the format"
-                     " +7 999 999 99 99 доб. (2 to 5 digits). The extension is not required.")
-
-        if len(check) == 0:
-            raise ValidationError(error_msg)
-        parts = check[0]
-        if not parts[5]:
-            value = f"+7({parts[1]}){parts[2]}-{parts[3]}-{parts[4]}"
-        else:
-            if "доб" in value:
-                value = f"+7({parts[1]}){parts[2]}-{parts[3]}-{parts[4]} доб. {parts[5]}"
-            else:
-                raise ValidationError(error_msg)
-        return value
+        return validate_telephone_number(value)
 
     def validate(self, data):
-        """Валидатор для значений адреса."""
-
-        def check_by_regex(key: str, value: str) -> None:
-            check = re.findall(r"[0-9а-яА-Яa-zA-Z\s]", value)
-            if len(check) != len(value):
-                raise ValidationError(f"The field {key} contains invalid characters")
-
-        need_list = ["settlement", "street", "house",
-                     "structure", "building", "flat"]
-
-        need_data = {key: value for key, value in data.items() if key in need_list}
-
-        for key, value in need_data.items():
-            check_by_regex(key, value)
-
-        return data
+        return validate_address_values(data)
 
 
 class PutContactSerializer(serializers.Serializer):
@@ -457,10 +394,10 @@ class PutContactSerializer(serializers.Serializer):
     )
 
     def validate_telephone(self, value):
-        return ContactSerializer.validate_telephone(self, value)
+        return validate_telephone_number(value)
 
     def validate(self, data):
-        return ContactSerializer.validate(self, data)
+        return validate_address_values(data)
 
 
 class OrderSerializer(serializers.ModelSerializer):
