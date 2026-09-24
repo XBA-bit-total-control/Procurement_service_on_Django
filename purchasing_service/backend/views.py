@@ -6,7 +6,6 @@ import yaml
 from celery.result import AsyncResult
 from django.core.validators import URLValidator, ValidationError
 from django.db import IntegrityError, transaction
-from django.http import HttpResponse
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from django_rest_passwordreset.serializers import EmailSerializer
@@ -776,7 +775,7 @@ class ContactAPIView(APIView):
 
         return Response({"status": "success"})
 
-    def delete(self, request) -> HttpResponse | Response:
+    def delete(self, request) -> Response:
         """Удаление контакта."""
 
         data = request.data
@@ -818,7 +817,7 @@ class ContactAPIView(APIView):
                       f"The contact data belonging to you with id={contact_id} is missing")
                     contact.delete()
 
-                return HttpResponse(status=204)
+                return Response(status=204)
 
         except AssertionError as err:
             return Response(
