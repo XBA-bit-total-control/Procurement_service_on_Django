@@ -2,7 +2,7 @@ FROM python:3.13
 
 WORKDIR /purchasing_service
 
-COPY requirements-dev.txt .
+COPY requirements.txt .
 
 RUN pip install -r requirements.txt
 
