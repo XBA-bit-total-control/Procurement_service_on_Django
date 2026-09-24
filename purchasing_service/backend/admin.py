@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
+from django.utils.translation import gettext_lazy as _
 
 from .models import (Shop, ShopCategory, Category, Product,
                      ProductInfo, Parameter, ProductParameter,
@@ -7,9 +9,36 @@ from .models import (Shop, ShopCategory, Category, Product,
 
 
 @admin.register(User)
-class UserAdmin(admin.ModelAdmin):
+class UserAdmin(UserAdmin):
     """Представление модели User в админке."""
-
+    fieldsets = (
+        (None, {"fields": ("email", "password")}),
+        (_("Персональная информация"), {
+            "fields": ("first_name", "last_name", "patronymic")
+        }),
+        (
+            _("Разрешения"),
+            {
+                "fields": (
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                ),
+            },
+        ),
+        (_("Важные даты"), {"fields": ("last_login", "date_joined")}),
+        (_("Статусы"), {"fields": ("is_active", "is_shop", "is_confirm")})
+    )
+    add_fieldsets = (
+        (None, {
+            "classes": ("wide",),
+            "fields": ("email", "usable_password", "password1", "password2"),
+        },),
+        (_("Персональная информация"), {
+            "fields": ("first_name", "last_name", "patronymic")
+        }),
+    )
     list_display = ["id", "first_name", "last_name", "patronymic",
                     "email", "is_active", "is_shop",
                     "is_confirm", "is_staff", "is_superuser"]
